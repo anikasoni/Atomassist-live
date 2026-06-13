@@ -15,6 +15,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link className="hover:text-white" to="/agent/dashboard">
               Dashboard
             </Link>
+            <Link className="hover:text-white" to="/admin">
+              Admin
+            </Link>
           </nav>
         </div>
       </header>

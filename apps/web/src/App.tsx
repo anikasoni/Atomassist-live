@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { AdminDashboardPage } from "./pages/AdminDashboardPage";
 import { AgentDashboardPage } from "./pages/AgentDashboardPage";
 import { AgentLoginPage } from "./pages/AgentLoginPage";
 import { AgentSessionPage } from "./pages/AgentSessionPage";
@@ -7,6 +8,7 @@ import { HomePage } from "./pages/HomePage";
 import { JoinPage } from "./pages/JoinPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SessionHistoryPage } from "./pages/SessionHistoryPage";
+import { ProtectedAdminRoute } from "./routes/ProtectedAdminRoute";
 import { ProtectedAgentRoute } from "./routes/ProtectedAgentRoute";
 
 export function App() {
@@ -31,6 +33,15 @@ export function App() {
             <ProtectedAgentRoute>
               <AgentSessionPage />
             </ProtectedAgentRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedAdminRoute>
+              <AdminDashboardPage />
+            </ProtectedAdminRoute>
           }
         />
 
