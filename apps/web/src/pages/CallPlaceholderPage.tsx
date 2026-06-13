@@ -189,13 +189,13 @@ export function CallPlaceholderPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-200">
-              Phase 4 Ã‚Â· Presence + Chat
+              Live SFU Call · Self-hosted mediasoup
             </div>
 
-            <h1 className="text-3xl font-bold">Live Support Room</h1>
+            <h1 className="text-3xl font-bold">Live Video Support Room</h1>
             <p className="mt-2 font-mono text-sm text-slate-400">{sessionId}</p>
             <p className="mt-2 text-sm text-slate-500">
-              Socket: {connectionStatus}
+              Realtime connection: {connectionStatus}
             </p>
           </div>
 
@@ -274,8 +274,7 @@ export function CallPlaceholderPage() {
               </div>
 
               <p className="mt-4 text-xs text-slate-500">
-                If customer disconnects, they can reconnect within 60 seconds.
-                After that, the session auto-ends and the invite expires.
+                Customer disconnects are held for a 60-second reconnect window. If the customer does not return, the session auto-ends and the invite expires.
               </p>
             </div>
           </section>
@@ -332,7 +331,7 @@ export function CallPlaceholderPage() {
           to={`/session/${sessionId}/history`}
           className="inline-block text-sm text-cyan-300 hover:text-cyan-200"
         >
-          View persisted session history Ã¢â€ â€™
+          View persisted session history →
         </Link>
       </div>
     </Shell>

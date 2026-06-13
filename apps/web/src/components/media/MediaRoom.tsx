@@ -319,7 +319,7 @@ export function MediaRoom({ socket, sessionId, enabled }: MediaRoomProps) {
           void syncRemoteProducers();
         }, 2500);
 
-        setMediaStatus("connected through SFU");
+        setMediaStatus("Media connected through self-hosted SFU");
       } catch (err) {
         console.error("[media] start failed", err);
         setError(err instanceof Error ? err.message : "Media failed to start");
@@ -455,7 +455,7 @@ export function MediaRoom({ socket, sessionId, enabled }: MediaRoomProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
           <div className="border-b border-white/10 px-4 py-3">
-            <p className="text-sm text-slate-300">Local video</p>
+            <p className="text-sm text-slate-300">Local camera</p>
           </div>
           <video
             ref={localVideoRef}
@@ -468,7 +468,7 @@ export function MediaRoom({ socket, sessionId, enabled }: MediaRoomProps) {
 
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
           <div className="border-b border-white/10 px-4 py-3">
-            <p className="text-sm text-slate-300">Remote video</p>
+            <p className="text-sm text-slate-300">Remote participant</p>
           </div>
           <video
             ref={remoteVideoRef}
@@ -480,7 +480,7 @@ export function MediaRoom({ socket, sessionId, enabled }: MediaRoomProps) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-        <p className="text-sm text-slate-400">Media: {mediaStatus}</p>
+        <p className="text-sm text-slate-400">{mediaStatus}</p>
 
         <div className="flex gap-3">
           <button
