@@ -1,0 +1,16 @@
+{
+  "name": "atomassist-live",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted real-time video support platform for customer support teams",
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}
