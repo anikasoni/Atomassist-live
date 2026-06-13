@@ -125,6 +125,13 @@ export function AdminDashboardPage() {
               Observability
             </Link>
 
+            <Link
+              to="/admin/recording"
+              className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-5 py-3 font-semibold text-amber-100 hover:bg-amber-300/20"
+            >
+              Recording Plan
+            </Link>
+
             <button
               onClick={logout}
               className="rounded-xl border border-white/10 px-5 py-3 font-semibold hover:bg-white/10"

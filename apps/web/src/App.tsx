@@ -8,6 +8,7 @@ import { HomePage } from "./pages/HomePage";
 import { JoinPage } from "./pages/JoinPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ObservabilityPage } from "./pages/ObservabilityPage";
+import { RecordingArchitecturePage } from "./pages/RecordingArchitecturePage";
 import { SessionHistoryPage } from "./pages/SessionHistoryPage";
 import { ProtectedAdminRoute } from "./routes/ProtectedAdminRoute";
 import { ProtectedAgentRoute } from "./routes/ProtectedAgentRoute";
@@ -51,6 +52,15 @@ export function App() {
           element={
             <ProtectedAdminRoute>
               <ObservabilityPage />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/recording"
+          element={
+            <ProtectedAdminRoute>
+              <RecordingArchitecturePage />
             </ProtectedAdminRoute>
           }
         />

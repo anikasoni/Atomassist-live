@@ -81,6 +81,20 @@ export interface Participant {
 }
 
 
+export interface RecordingCapabilities {
+  tabRecordingMvp: {
+    available: boolean;
+    description: string;
+  };
+  serverSideSfuRecording: {
+    available: boolean;
+    ffmpegAvailable: boolean;
+    mode: "disabled" | "ready_for_spike";
+    description: string;
+    productionPath: string[];
+  };
+}
+
 export interface Recording {
   id: string;
   sessionId: string;
@@ -153,6 +167,11 @@ export interface CustomerJoinResponse {
 }
 
 export const api = {
+  getRecordingCapabilities() {
+    return request<{ capabilities: RecordingCapabilities }>(
+      "/api/system/recording-capabilities"
+    );
+  },
   loginAgent(email: string, password: string) {
     return request<LoginResponse>("/api/auth/agent-login", {
       method: "POST",

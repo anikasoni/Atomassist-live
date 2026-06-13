@@ -6,10 +6,12 @@ import { metricsRouter } from "./metrics.routes.js";
 import { recordingRouter } from "./recording.routes.js";
 import { sessionRouter } from "./session.routes.js";
 import { sessionReviewRouter } from "./session-review.routes.js";
+import { systemRouter } from "./system.routes.js";
 
 export const apiRouter = Router();
 
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/system", systemRouter);
 apiRouter.use("/sessions", sessionRouter);
 apiRouter.use("/sessions", sessionReviewRouter);
 apiRouter.use("/invites", inviteRouter);
