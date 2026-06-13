@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <em>Built for a 15-hour hackathon as a production-aware WebRTC support system.</em>
+  <em>A production-aware WebRTC support system built within a 15-hour hackathon sprint.</em>
 </p>
 
 ---
