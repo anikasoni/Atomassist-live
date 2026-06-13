@@ -58,7 +58,7 @@ export interface Session {
   endReason?: string | null;
   participants?: Participant[];
   events?: SessionEvent[];
-  chatMessages?: unknown[];
+  chatMessages?: ChatMessage[];
   files?: unknown[];
   recordings?: unknown[];
 }
@@ -74,6 +74,21 @@ export interface Participant {
   leftAt?: string | null;
 }
 
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  senderParticipantId: string;
+  messageType: "TEXT" | "FILE";
+  body: string;
+  fileId?: string | null;
+  createdAt: string;
+  senderParticipant?: {
+    id: string;
+    displayName: string;
+    role: "AGENT" | "CUSTOMER";
+  };
+}
 export interface SessionEvent {
   id: string;
   sessionId: string;

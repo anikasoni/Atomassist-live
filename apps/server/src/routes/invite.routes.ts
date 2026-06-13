@@ -28,7 +28,8 @@ async function findSessionByInviteToken(token: string) {
 inviteRouter.get(
   "/:token",
   asyncHandler(async (req, res) => {
-    const session = await findSessionByInviteToken(String(req.params.token));
+    const token = String(req.params.token);
+    const session = await findSessionByInviteToken(token);
 
     if (!session) {
       throw new AppError(404, "Invalid invite link", "INVALID_INVITE");
@@ -42,7 +43,7 @@ inviteRouter.get(
       sessionId: session.id,
       type: "INVITE_OPENED",
       payload: {
-        tokenPreview: String(req.params.token).slice(0, 6),
+        tokenPreview: token.slice(0, 6),
       },
     });
 
@@ -60,9 +61,10 @@ inviteRouter.get(
 inviteRouter.post(
   "/:token/join",
   asyncHandler(async (req, res) => {
+    const token = String(req.params.token);
     const body = joinInviteSchema.parse(req.body);
 
-    const session = await findSessionByInviteToken(String(req.params.token));
+    const session = await findSessionByInviteToken(token);
 
     if (!session) {
       throw new AppError(404, "Invalid invite link", "INVALID_INVITE");
@@ -72,13 +74,13 @@ inviteRouter.post(
       throw new AppError(410, "This session has already ended", "SESSION_ALREADY_ENDED");
     }
 
-    const existingActiveCustomer = session.participants.find(
+    const activeCustomer = session.participants.find(
       (participant) =>
         participant.role === "CUSTOMER" &&
-        participant.status !== "LEFT"
+        (participant.status === "CONNECTED" || participant.status === "JOINED")
     );
 
-    if (existingActiveCustomer) {
+    if (activeCustomer) {
       throw new AppError(
         409,
         "A customer has already joined this session",
@@ -86,15 +88,35 @@ inviteRouter.post(
       );
     }
 
-    const participant = await prisma.participant.create({
-      data: {
-        sessionId: session.id,
-        role: "CUSTOMER",
-        displayName: body.displayName,
-        status: "JOINED",
-        joinedAt: new Date(),
-      },
-    });
+    const reconnectableCustomer = session.participants.find(
+      (participant) =>
+        participant.role === "CUSTOMER" &&
+        (participant.status === "RECONNECTING" || participant.status === "LEFT")
+    );
+
+    const participant = reconnectableCustomer
+      ? await prisma.participant.update({
+          where: {
+            id: reconnectableCustomer.id,
+          },
+          data: {
+            displayName: body.displayName,
+            status: "JOINED",
+            joinedAt: new Date(),
+            leftAt: null,
+            socketId: null,
+            lastSeenAt: new Date(),
+          },
+        })
+      : await prisma.participant.create({
+          data: {
+            sessionId: session.id,
+            role: "CUSTOMER",
+            displayName: body.displayName,
+            status: "JOINED",
+            joinedAt: new Date(),
+          },
+        });
 
     const updatedSession = await prisma.session.update({
       where: {
@@ -109,14 +131,14 @@ inviteRouter.post(
     await logSessionEvent({
       sessionId: session.id,
       participantId: participant.id,
-      type: "PARTICIPANT_JOINED",
+      type: reconnectableCustomer ? "PARTICIPANT_REJOINED_FROM_INVITE" : "PARTICIPANT_JOINED",
       payload: {
         role: "CUSTOMER",
         displayName: participant.displayName,
       },
     });
 
-    const token = signAuthToken({
+    const customerAuthToken = signAuthToken({
       id: participant.id,
       role: "CUSTOMER",
       displayName: participant.displayName,
@@ -125,7 +147,7 @@ inviteRouter.post(
     });
 
     res.status(201).json({
-      token,
+      token: customerAuthToken,
       participant,
       session: {
         id: updatedSession.id,

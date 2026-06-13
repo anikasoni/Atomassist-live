@@ -40,7 +40,7 @@ export function JoinPage() {
     try {
       const result = await api.joinInvite(inviteToken, displayName);
       saveCustomerAuth(result.token, result.session.id);
-      navigate(`/call/${result.session.id}`);
+      navigate(`/call/${result.session.id}?role=customer`);
     } catch (err) {
       if (err instanceof ApiError) setError(err.message);
       else setError("Failed to join session");

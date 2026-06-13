@@ -75,7 +75,7 @@ export function SessionHistoryPage() {
                   <div key={participant.id} className="rounded-xl bg-slate-900 p-4">
                     <p className="font-medium">{participant.displayName}</p>
                     <p className="text-sm text-slate-400">
-                      {participant.role} · {participant.status}
+                      {participant.role} Â· {participant.status}
                     </p>
                   </div>
                 ))}

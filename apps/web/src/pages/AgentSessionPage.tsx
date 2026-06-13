@@ -74,7 +74,7 @@ export function AgentSessionPage() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <Link
-            to={`/call/${session.id}`}
+            to={`/call/${session.id}?role=agent`}
             className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 p-5 hover:bg-cyan-400/20"
           >
             <h2 className="font-semibold text-cyan-200">Open Call Room</h2>
