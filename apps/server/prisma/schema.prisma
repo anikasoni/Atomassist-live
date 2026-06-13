@@ -38,20 +38,24 @@ enum RecordingStatus {
 }
 
 model Session {
-  id              String          @id @default(cuid())
-  status          SessionStatus   @default(WAITING)
-  agentId         String
-  inviteTokenHash String          @unique
-  createdAt       DateTime        @default(now())
-  startedAt       DateTime?
-  endedAt         DateTime?
-  endReason       String?
+  id                String        @id @default(cuid())
+  status            SessionStatus @default(WAITING)
+  agentId           String
+  inviteTokenHash   String        @unique
+  createdAt         DateTime      @default(now())
+  startedAt         DateTime?
+  endedAt           DateTime?
+  endReason         String?
+  resolutionStatus  String        @default("OPEN")
+  reviewNotes       String?
+  reviewedAt        DateTime?
+  reviewedByAgentId String?
 
-  participants    Participant[]
-  events          SessionEvent[]
-  chatMessages    ChatMessage[]
-  files           FileAsset[]
-  recordings      Recording[]
+  participants Participant[]
+  events       SessionEvent[]
+  chatMessages ChatMessage[]
+  files        FileAsset[]
+  recordings   Recording[]
 
   @@index([agentId])
   @@index([status])
@@ -80,12 +84,12 @@ model Participant {
 }
 
 model SessionEvent {
-  id            String       @id @default(cuid())
+  id            String   @id @default(cuid())
   sessionId     String
   participantId String?
   type          String
   payload       Json?
-  createdAt     DateTime     @default(now())
+  createdAt     DateTime @default(now())
 
   session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   participant Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
@@ -113,18 +117,18 @@ model ChatMessage {
 }
 
 model FileAsset {
-  id                       String   @id @default(cuid())
-  sessionId                String
-  uploadedByParticipantId  String
-  originalName             String
-  mimeType                 String
-  sizeBytes                Int
-  storagePath              String
-  createdAt                DateTime @default(now())
+  id                      String   @id @default(cuid())
+  sessionId               String
+  uploadedByParticipantId String
+  originalName            String
+  mimeType                String
+  sizeBytes               Int
+  storagePath             String
+  createdAt               DateTime @default(now())
 
-  session     Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  uploadedBy  Participant   @relation(fields: [uploadedByParticipantId], references: [id], onDelete: Cascade)
-  messages    ChatMessage[]
+  session    Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  uploadedBy Participant   @relation(fields: [uploadedByParticipantId], references: [id], onDelete: Cascade)
+  messages   ChatMessage[]
 
   @@index([sessionId])
   @@index([createdAt])

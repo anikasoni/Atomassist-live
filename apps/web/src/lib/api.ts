@@ -58,6 +58,10 @@ export interface Session {
   startedAt?: string | null;
   endedAt?: string | null;
   endReason?: string | null;
+  resolutionStatus?: "OPEN" | "RESOLVED" | "ESCALATED" | string;
+  reviewNotes?: string | null;
+  reviewedAt?: string | null;
+  reviewedByAgentId?: string | null;
   participants?: Participant[];
   events?: SessionEvent[];
   chatMessages?: ChatMessage[];
@@ -205,6 +209,23 @@ export const api = {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ reason }),
+    });
+  },
+
+  updateSessionReview(
+    token: string,
+    sessionId: string,
+    input: {
+      resolutionStatus: "OPEN" | "RESOLVED" | "ESCALATED";
+      reviewNotes: string;
+    }
+  ) {
+    return request<{ session: Session }>(`/api/sessions/${sessionId}/review`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(input),
     });
   },
 
