@@ -7,6 +7,7 @@ import { prisma } from "../db/prisma.js";
 import { asyncHandler } from "../middleware/async-handler.js";
 import { requireAuth } from "../middleware/auth.js";
 import { AppError } from "../middleware/error.js";
+import { serverSfuRecorder } from "../recording/server-sfu-recorder.js";
 import { logSessionEvent } from "../services/event.service.js";
 
 export const recordingRouter = Router();
@@ -16,6 +17,12 @@ const MAX_RECORDING_SIZE_BYTES = 300 * 1024 * 1024;
 
 function safeFolderName(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, "_");
+}
+
+function recordingOutputPath(sessionId: string, recordingId: string) {
+  const dir = path.join(RECORDING_ROOT, safeFolderName(sessionId));
+  fs.mkdirSync(dir, { recursive: true });
+  return path.join(dir, `${recordingId}.server-sfu.webm`);
 }
 
 const storage = multer.diskStorage({
@@ -141,6 +148,180 @@ recordingRouter.post(
     res.status(201).json({
       recording,
     });
+  })
+);
+
+recordingRouter.post(
+  "/sessions/:id/server-recordings/start",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const sessionId = String(req.params.id);
+
+    await assertAgentCanRecord({
+      sessionId,
+      user: req.user!,
+    });
+
+    const recording = await prisma.recording.create({
+      data: {
+        sessionId,
+        startedByAgentId: req.user!.id,
+        status: "IN_PROGRESS",
+        startedAt: new Date(),
+      },
+    });
+
+    try {
+      const outputPath = recordingOutputPath(sessionId, recording.id);
+
+      const result = await serverSfuRecorder.start({
+        sessionId,
+        recordingId: recording.id,
+        outputPath,
+      });
+
+      await logSessionEvent({
+        sessionId,
+        type: "SERVER_RECORDING_STARTED",
+        payload: {
+          recordingId: recording.id,
+          mode: "server_side_sfu_experimental",
+          tracks: result.tracks,
+        },
+      });
+
+      res.status(201).json({
+        recording,
+        serverRecording: result,
+      });
+    } catch (error) {
+      await prisma.recording.update({
+        where: {
+          id: recording.id,
+        },
+        data: {
+          status: "FAILED",
+          stoppedAt: new Date(),
+        },
+      });
+
+      await logSessionEvent({
+        sessionId,
+        type: "SERVER_RECORDING_FAILED",
+        payload: {
+          recordingId: recording.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+
+      throw error;
+    }
+  })
+);
+
+recordingRouter.post(
+  "/sessions/:id/server-recordings/:recordingId/stop",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const sessionId = String(req.params.id);
+    const recordingId = String(req.params.recordingId);
+
+    await assertAgentCanRecord({
+      sessionId,
+      user: req.user!,
+    });
+
+    const recording = await prisma.recording.findUnique({
+      where: {
+        id: recordingId,
+      },
+    });
+
+    if (!recording || recording.sessionId !== sessionId) {
+      throw new AppError(404, "Recording not found", "RECORDING_NOT_FOUND");
+    }
+
+    await prisma.recording.update({
+      where: {
+        id: recordingId,
+      },
+      data: {
+        status: "PROCESSING",
+        stoppedAt: new Date(),
+      },
+    });
+
+    await logSessionEvent({
+      sessionId,
+      type: "SERVER_RECORDING_PROCESSING",
+      payload: {
+        recordingId,
+      },
+    });
+
+    try {
+      const result = await serverSfuRecorder.stop(recordingId);
+
+      if (!result.sizeBytes || result.sizeBytes < 1024) {
+        throw new Error(
+          `Server recording file was not created correctly. Check FFmpeg log: ${result.ffmpegLogPath}`
+        );
+      }
+
+      const readyRecording = await prisma.recording.update({
+        where: {
+          id: recordingId,
+        },
+        data: {
+          status: "READY",
+          storagePath: result.outputPath,
+          readyAt: new Date(),
+        },
+      });
+
+      await logSessionEvent({
+        sessionId,
+        type: "SERVER_RECORDING_READY",
+        payload: {
+          recordingId,
+          sizeBytes: result.sizeBytes,
+          outputPath: result.outputPath,
+          ffmpegLogPath: result.ffmpegLogPath,
+        },
+      });
+
+      res.json({
+        recording: readyRecording,
+        serverRecording: result,
+      });
+    } catch (error) {
+      const failedRecording = await prisma.recording.update({
+        where: {
+          id: recordingId,
+        },
+        data: {
+          status: "FAILED",
+          stoppedAt: new Date(),
+        },
+      });
+
+      await logSessionEvent({
+        sessionId,
+        type: "SERVER_RECORDING_FAILED",
+        payload: {
+          recordingId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+
+      res.status(500).json({
+        recording: failedRecording,
+        error: {
+          code: "SERVER_RECORDING_FAILED",
+          message: error instanceof Error ? error.message : "Server recording failed",
+        },
+      });
+    }
   })
 );
 
@@ -299,6 +480,10 @@ recordingRouter.get(
       throw new AppError(404, "Recording file missing", "RECORDING_FILE_MISSING");
     }
 
-    res.download(resolvedPath, `atomassist-recording-${recording.sessionId}.webm`);
+    const downloadName = resolvedPath.includes(".server-sfu.")
+      ? `atomassist-server-sfu-recording-${recording.sessionId}.webm`
+      : `atomassist-tab-recording-${recording.sessionId}.webm`;
+
+    res.download(resolvedPath, downloadName);
   })
 );

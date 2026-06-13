@@ -64,8 +64,7 @@ export function App() {
             </ProtectedAdminRoute>
           }
         />
-
-        <Route path="/join/:inviteToken" element={<JoinPage />} />
+<Route path="/join/:inviteToken" element={<JoinPage />} />
         <Route path="/call/:sessionId" element={<CallPlaceholderPage />} />
         <Route path="/session/:sessionId/history" element={<SessionHistoryPage />} />
         <Route path="*" element={<NotFoundPage />} />

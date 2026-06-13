@@ -338,6 +338,93 @@ class MediaService {
     }
   }
 
+  listSessionProducers(sessionId: string) {
+    const room = this.rooms.get(sessionId);
+
+    if (!room) return [];
+
+    const producers: Array<{
+      producerId: string;
+      participantId: string;
+      kind: mediasoupTypes.MediaKind;
+    }> = [];
+
+    for (const [participantId, peer] of room.peers.entries()) {
+      for (const producer of peer.producers.values()) {
+        producers.push({
+          producerId: producer.id,
+          participantId,
+          kind: producer.kind,
+        });
+      }
+    }
+
+    return producers;
+  }
+
+  async createServerSideRtpConsumer(input: {
+    sessionId: string;
+    producerId: string;
+    rtpPort: number;
+    plainTransportPort: number;
+  }) {
+    const room = this.rooms.get(input.sessionId);
+
+    if (!room) {
+      throw new Error("Media room not found for server-side recording");
+    }
+
+    const producerInfo = this
+      .listSessionProducers(input.sessionId)
+      .find((producer) => producer.producerId === input.producerId);
+
+    if (!producerInfo) {
+      throw new Error("Producer not found for server-side recording");
+    }
+
+    const plainTransport = await room.router.createPlainTransport({
+      listenInfo: {
+        protocol: "udp",
+        ip: "127.0.0.1",
+        port: input.plainTransportPort,
+      },
+      rtcpMux: true,
+      comedia: false,
+    } as mediasoupTypes.PlainTransportOptions);
+
+    await plainTransport.connect({
+      ip: "127.0.0.1",
+      port: input.rtpPort,
+    });
+
+    const consumer = await plainTransport.consume({
+      producerId: input.producerId,
+      rtpCapabilities: room.router.rtpCapabilities,
+      paused: true,
+    });
+
+    return {
+      producerId: input.producerId,
+      participantId: producerInfo.participantId,
+      kind: consumer.kind,
+      rtpParameters: consumer.rtpParameters,
+      async resume() {
+        if (!consumer.closed) {
+          await consumer.resume();
+        }
+      },
+      close() {
+        if (!consumer.closed) {
+          consumer.close();
+        }
+
+        if (!plainTransport.closed) {
+          plainTransport.close();
+        }
+      },
+    };
+  }
+
   closeProducer(input: {
     sessionId: string;
     participantId: string;

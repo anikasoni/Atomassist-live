@@ -60,6 +60,8 @@ export function CallPlaceholderPage() {
   const [recording, setRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
+  const [serverRecordingId, setServerRecordingId] = useState<string | null>(null);
+  const [serverRecordingStatus, setServerRecordingStatus] = useState("");
 
   const role = searchParams.get("role");
 
@@ -342,6 +344,60 @@ export function CallPlaceholderPage() {
     }
   }
 
+  async function startServerRecording() {
+    if (!token || !sessionId || !isAgent) return;
+
+    setError("");
+    setServerRecordingStatus("Starting experimental server-side SFU recording...");
+
+    try {
+      const result = await api.startServerSideRecording(token, sessionId);
+
+      setServerRecordingId(result.recording.id);
+      setServerRecordingStatus(
+        `Server recording IN_PROGRESS. Tracks: ${result.serverRecording.tracks
+          .map((track) => track.kind)
+          .join(", ")}`
+      );
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else if (err instanceof Error) setError(err.message);
+      else setError("Server-side recording failed to start");
+
+      setServerRecordingStatus("");
+      setServerRecordingId(null);
+    }
+  }
+
+  async function stopServerRecording() {
+    if (!token || !sessionId || !serverRecordingId) return;
+
+    setServerRecordingStatus("Server recording PROCESSING. Stopping FFmpeg...");
+
+    try {
+      const result = await api.stopServerSideRecording(
+        token,
+        sessionId,
+        serverRecordingId
+      );
+
+      if (result.recording.status === "READY") {
+        setServerRecordingStatus("Server recording READY in session history.");
+      } else {
+        setServerRecordingStatus(`Server recording status: ${result.recording.status}`);
+      }
+
+      setServerRecordingId(null);
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else if (err instanceof Error) setError(err.message);
+      else setError("Server-side recording failed to stop");
+
+      setServerRecordingStatus("");
+      setServerRecordingId(null);
+    }
+  }
+
   function leaveCall() {
     socketRef.current?.emit("session:leave", {}, () => {
       socketRef.current?.disconnect();
@@ -408,6 +464,24 @@ export function CallPlaceholderPage() {
                   className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-4 py-3 font-semibold text-amber-100 hover:bg-amber-300/20"
                 >
                   Start Tab Recording
+                </button>
+              )
+            )}
+
+            {isAgent && session?.status !== "ENDED" && (
+              serverRecordingId ? (
+                <button
+                  onClick={stopServerRecording}
+                  className="rounded-xl bg-violet-300 px-4 py-3 font-semibold text-slate-950 hover:bg-violet-200"
+                >
+                  Stop Server Recording
+                </button>
+              ) : (
+                <button
+                  onClick={startServerRecording}
+                  className="rounded-xl border border-violet-300/40 bg-violet-300/10 px-4 py-3 font-semibold text-violet-100 hover:bg-violet-300/20"
+                >
+                  Start Server Recording
                 </button>
               )
             )}
@@ -536,7 +610,7 @@ export function CallPlaceholderPage() {
                           {message.file.originalName}
                         </p>
                         <p className="mt-1 text-[10px] text-slate-500">
-                          {message.file.mimeType} Ã¢â‚¬Å¡Ã‚Â· {formatFileSize(message.file.sizeBytes)}
+                          {message.file.mimeType} ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â· {formatFileSize(message.file.sizeBytes)}
                         </p>
                       </button>
                     ) : (

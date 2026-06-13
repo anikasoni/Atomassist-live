@@ -131,8 +131,7 @@ export function AdminDashboardPage() {
             >
               Recording Plan
             </Link>
-
-            <button
+<button
               onClick={logout}
               className="rounded-xl border border-white/10 px-5 py-3 font-semibold hover:bg-white/10"
             >

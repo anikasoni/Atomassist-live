@@ -277,6 +277,50 @@ export const api = {
     );
   },
 
+  startServerSideRecording(token: string, sessionId: string) {
+    return request<{
+      recording: Recording;
+      serverRecording: {
+        outputPath: string;
+        sdpPath: string;
+        ffmpegLogPath: string;
+        tracks: Array<{
+          producerId: string;
+          kind: "audio" | "video";
+          port: number;
+        }>;
+      };
+    }>(`/api/sessions/${sessionId}/server-recordings/start`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+  },
+
+  stopServerSideRecording(
+    token: string,
+    sessionId: string,
+    recordingId: string
+  ) {
+    return request<{
+      recording: Recording;
+      serverRecording?: {
+        outputPath: string;
+        sdpPath: string;
+        ffmpegLogPath: string;
+        sizeBytes: number;
+      };
+    }>(`/api/sessions/${sessionId}/server-recordings/${recordingId}/stop`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({}),
+    });
+  },
+
   uploadSessionRecording(token: string, sessionId: string, recording: Blob) {
     const formData = new FormData();
     formData.append(

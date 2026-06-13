@@ -17,6 +17,16 @@ function formatFileSize(sizeBytes?: number) {
   return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function getRecordingLabel(recording: Recording) {
+  const storagePath = recording.storagePath ?? "";
+
+  if (storagePath.includes(".server-sfu.")) {
+    return "Server-side SFU recording";
+  }
+
+  return "Browser tab recording";
+}
+
 function reviewBadgeClass(status: string) {
   if (status === "RESOLVED") {
     return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
@@ -298,7 +308,7 @@ export function SessionHistoryPage() {
                 </div>
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
-                  <h2 className="font-semibold">Tab Recordings</h2>
+                  <h2 className="font-semibold">Recordings</h2>
                   <div className="mt-4 space-y-3">
                     {session.recordings?.length ? (
                       session.recordings.map((recording) => (
@@ -308,10 +318,13 @@ export function SessionHistoryPage() {
                           className="w-full rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-left hover:bg-amber-300/20"
                         >
                           <p className="text-sm font-semibold text-amber-100">
-                            Download tab recording
+                            {getRecordingLabel(recording)}
                           </p>
                           <p className="mt-1 text-xs text-slate-400">
                             Status: {recording.status}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            Type: {getRecordingLabel(recording)}
                           </p>
                           <p className="mt-1 text-[10px] text-slate-600">
                             {formatDateTime(recording.startedAt)}
@@ -320,7 +333,7 @@ export function SessionHistoryPage() {
                       ))
                     ) : (
                       <p className="text-sm text-slate-400">
-                        No tab recordings yet.
+                        No recordings yet.
                       </p>
                     )}
                   </div>
