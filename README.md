@@ -1,65 +1,131 @@
-﻿
 # AtomAssist Live
 
-Self-hosted real-time video support platform for customer support teams.
+AtomAssist Live is a self-hosted real-time video support platform for customer support teams.
 
-## Current Phase
+It provides secure support sessions where agents can invite customers into a browser-based video call, chat in real time, share files, recover from short disconnects, record the session tab as an MVP, and monitor system metrics through an admin dashboard.
 
-Phase 1: Monorepo scaffold.
+## Hackathon Compliance
 
-Implemented:
+AtomAssist does not use hosted video APIs such as Twilio, Agora, Daily, Vonage, LiveKit Cloud, or Jitsi hosted services.
 
-* React + Vite + TypeScript frontend
-* Express + TypeScript backend
-* Shared TypeScript package
-* PostgreSQL Docker Compose setup
-* Health check endpoint
+Audio/video is routed through a self-hosted open-source SFU using mediasoup inside our own Node.js backend.
 
-Not implemented yet:
+## Core Features
 
-* Prisma/database models
-* Authentication
-* Session APIs
-* Socket.IO
-* mediasoup SFU WebRTC
-* Chat
-* Recording
-* Admin dashboard
+- Agent and admin login
+- Role-aware protected routes
+- Secure invite links
+- Customer join flow
+- Self-hosted mediasoup SFU video/audio calls
+- Socket.IO realtime presence
+- 60-second customer reconnect window
+- Agent-controlled session ending
+- Expiring invite links after session end
+- Realtime chat
+- File sharing in chat
+- Session history
+- Browser tab recording MVP
+- Admin dashboard
+- Human-friendly observability dashboard
+- Prometheus-compatible `/metrics` endpoint
+- PostgreSQL persistence with Prisma
 
 ## Tech Stack
 
-Frontend:
+### Frontend
 
-* React
-* Vite
-* TypeScript
-* Tailwind CSS
+- React
+- Vite
+- TypeScript
+- Tailwind CSS
+- Socket.IO Client
+- mediasoup-client
 
-Backend:
+### Backend
 
-* Node.js
-* Express
-* TypeScript
+- Node.js
+- Express
+- TypeScript
+- Socket.IO
+- mediasoup
+- Prisma
+- PostgreSQL
+- JWT authentication
+- multer file uploads
+- prom-client metrics
 
-Monorepo:
+### Infrastructure
 
-* pnpm workspaces
+- pnpm workspaces
+- Docker Compose for PostgreSQL
 
-Database:
+## Architecture
 
-* PostgreSQL through Docker Compose
+```text
+Customer Browser
+  |
+  | HTTPS / WebSocket / WebRTC
+  v
+React + Socket.IO Client + mediasoup-client
+  |
+  | REST APIs + Socket.IO signaling
+  v
+Node.js Express Backend
+  |
+  | Prisma
+  v
+PostgreSQL
 
-Future media layer:
+Node.js Backend
+  |
+  | mediasoup worker/router/transports
+  v
+Self-hosted SFU media routing
+```
 
-* mediasoup SFU for server-routed WebRTC
+## Demo Credentials
 
-## Setup
+Agent:
+
+```text
+agent@demo.com
+demo123
+```
+
+Admin:
+
+```text
+admin@demo.com
+demo123
+```
+
+## Local Setup
+
+Install dependencies:
 
 ```bash
 pnpm install
 ```
 
-## Run Development
+Start PostgreSQL:
+
+```bash
+docker compose up -d
+```
+
+Run database migration:
+
+```bash
+pnpm --filter @atomassist/server prisma:migrate
+```
+
+Generate Prisma client:
+
+```bash
+pnpm --filter @atomassist/server prisma:generate
+```
+
+Run development servers:
 
 ```bash
 pnpm dev
@@ -83,17 +149,59 @@ Health check:
 curl.exe http://localhost:4000/health
 ```
 
-Expected response:
+Metrics:
 
-```json
-{
-  "status": "ok",
-  "service": "atomassist-server"
-}
+```text
+http://localhost:4000/metrics
 ```
 
-## Important Hackathon Constraint
+Admin observability UI:
 
-This project must not use peer-to-peer WebRTC or hosted video APIs like Twilio, Agora, Daily, Vonage, Jitsi hosted, or LiveKit Cloud.
+```text
+http://localhost:5173/admin/observability
+```
 
-Media will be routed through our own server using mediasoup SFU in a later phase.
+## Environment
+
+Backend environment file:
+
+```text
+apps/server/.env
+```
+
+Important media config for same-laptop testing:
+
+```env
+MEDIASOUP_LISTEN_IP=0.0.0.0
+MEDIASOUP_ANNOUNCED_IP=127.0.0.1
+MEDIASOUP_MIN_PORT=40000
+MEDIASOUP_MAX_PORT=40100
+```
+
+For testing from another device on the same Wi-Fi, set `MEDIASOUP_ANNOUNCED_IP` to the host machine LAN IP, for example:
+
+```env
+MEDIASOUP_ANNOUNCED_IP=192.168.29.9
+```
+
+Then restart:
+
+```bash
+pnpm dev
+```
+
+## Recording Note
+
+The current recording feature is a browser tab recording MVP. The agent selects the AtomAssist tab/window, records it using the browser MediaRecorder API, and uploads the final `.webm` recording to the backend.
+
+Production-grade SFU-side recording would require server-side RTP consumption from mediasoup and muxing/composition through FFmpeg or GStreamer.
+
+## What Makes This Project Strong
+
+- Self-hosted SFU instead of peer-to-peer or hosted APIs
+- Real session lifecycle management
+- Secure role-based access
+- Customer reconnect handling
+- Persistent history for events, chat, files, and recordings
+- Admin observability
+- Clear production upgrade path
