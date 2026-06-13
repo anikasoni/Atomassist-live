@@ -62,7 +62,7 @@ export interface Session {
   events?: SessionEvent[];
   chatMessages?: ChatMessage[];
   files?: unknown[];
-  recordings?: unknown[];
+  recordings?: Recording[];
 }
 
 export interface Participant {
@@ -76,6 +76,17 @@ export interface Participant {
   leftAt?: string | null;
 }
 
+
+export interface Recording {
+  id: string;
+  sessionId: string;
+  startedByAgentId: string;
+  status: "IN_PROGRESS" | "PROCESSING" | "READY" | "FAILED";
+  storagePath?: string | null;
+  startedAt: string;
+  stoppedAt?: string | null;
+  readyAt?: string | null;
+}
 
 export interface FileAsset {
   id: string;
@@ -211,6 +222,55 @@ export const api = {
         body: formData,
       }
     );
+  },
+
+  uploadSessionRecording(token: string, sessionId: string, recording: Blob) {
+    const formData = new FormData();
+    formData.append(
+      "recording",
+      recording,
+      `atomassist-session-${sessionId}.webm`
+    );
+
+    return request<{ recording: Recording }>(
+      `/api/sessions/${sessionId}/recordings/upload`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    );
+  },
+
+  async downloadRecording(token: string, recordingId: string, sessionId: string) {
+    const res = await fetch(`${API_BASE_URL}/api/recordings/${recordingId}/download`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new ApiError(
+        res.status,
+        data?.error?.message ?? "Failed to download recording",
+        data?.error?.code
+      );
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = `atomassist-recording-${sessionId}.webm`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    URL.revokeObjectURL(url);
   },
 
   async downloadFile(token: string, fileId: string, originalName: string) {

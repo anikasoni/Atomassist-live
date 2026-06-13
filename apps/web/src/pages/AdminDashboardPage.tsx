@@ -101,11 +101,11 @@ export function AdminDashboardPage() {
             </div>
             <h1 className="text-3xl font-bold">Admin Dashboard</h1>
             <p className="mt-2 text-slate-400">
-              Signed in as {user?.displayName ?? "Admin"} · monitors all support sessions.
+              Signed in as {user?.displayName ?? "Admin"} - monitors all support sessions.
             </p>
             {lastRefreshedAt && (
               <p className="mt-1 text-xs text-slate-600">
-                Auto-refreshing every 5 seconds · Last refresh{" "}
+                Auto-refreshing every 5 seconds - Last refresh{" "}
                 {lastRefreshedAt.toLocaleTimeString()}
               </p>
             )}

@@ -41,6 +41,9 @@ export function CallPlaceholderPage() {
 
   const socketRef = useRef<Socket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingChunksRef = useRef<Blob[]>([]);
+  const recordingStreamRef = useRef<MediaStream | null>(null);
 
   const [session, setSession] = useState<Session | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -51,6 +54,8 @@ export function CallPlaceholderPage() {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingStatus, setRecordingStatus] = useState("");
 
   const role = searchParams.get("role");
 
@@ -212,6 +217,89 @@ export function CallPlaceholderPage() {
     }
   }
 
+  async function uploadRecordingBlob(blob: Blob) {
+    if (!token || !sessionId) return;
+
+    setRecordingStatus("Uploading tab recording...");
+
+    try {
+      await api.uploadSessionRecording(token, sessionId, blob);
+      setRecordingStatus("Tab recording saved to session history.");
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError("Recording upload failed");
+      setRecordingStatus("");
+    }
+  }
+
+  async function startRecording() {
+    if (!isAgent) return;
+
+    setError("");
+    setRecordingStatus("");
+
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: true,
+      });
+
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+
+      const mimeType = MediaRecorder.isTypeSupported("video/webm;codecs=vp9,opus")
+        ? "video/webm;codecs=vp9,opus"
+        : "video/webm";
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordingChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(recordingChunksRef.current, {
+          type: "video/webm",
+        });
+
+        recordingStreamRef.current?.getTracks().forEach((track) => track.stop());
+        recordingStreamRef.current = null;
+        mediaRecorderRef.current = null;
+        recordingChunksRef.current = [];
+        setRecording(false);
+
+        if (blob.size > 0) {
+          void uploadRecordingBlob(blob);
+        }
+      };
+
+      stream.getVideoTracks()[0]?.addEventListener("ended", () => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      });
+
+      recorder.start(1000);
+      setRecording(true);
+      setRecordingStatus("Tab recording in progress. Select the AtomAssist tab/window for best results.");
+    } catch (err) {
+      if (err instanceof Error) setError(err.message);
+      else setError("Could not start recording");
+      setRecording(false);
+      setRecordingStatus("");
+    }
+  }
+
+  function stopRecording() {
+    if (mediaRecorderRef.current?.state === "recording") {
+      setRecordingStatus("Finalizing tab recording...");
+      mediaRecorderRef.current.stop();
+    }
+  }
+
   function leaveCall() {
     socketRef.current?.emit("session:leave", {}, () => {
       socketRef.current?.disconnect();
@@ -251,7 +339,7 @@ export function CallPlaceholderPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-200">
-              Live SFU Call · Chat · File Sharing
+              Live SFU Call - Chat - File Sharing - Tab Recording
             </div>
 
             <h1 className="text-3xl font-bold">Live Video Support Room</h1>
@@ -263,6 +351,24 @@ export function CallPlaceholderPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             {session && <StatusBadge status={session.status} />}
+
+            {isAgent && session?.status !== "ENDED" && (
+              recording ? (
+                <button
+                  onClick={stopRecording}
+                  className="rounded-xl bg-amber-300 px-4 py-3 font-semibold text-slate-950 hover:bg-amber-200"
+                >
+                  Stop Tab Recording
+                </button>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-4 py-3 font-semibold text-amber-100 hover:bg-amber-300/20"
+                >
+                  Start Tab Recording
+                </button>
+              )
+            )}
 
             <button
               onClick={leaveCall}
@@ -284,6 +390,12 @@ export function CallPlaceholderPage() {
         </div>
 
         {error && <ErrorMessage message={error} />}
+
+        {recordingStatus && (
+          <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
+            {recordingStatus}
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <section className="space-y-6">
@@ -377,7 +489,7 @@ export function CallPlaceholderPage() {
                           {message.file.originalName}
                         </p>
                         <p className="mt-1 text-[10px] text-slate-500">
-                          {message.file.mimeType} · {formatFileSize(message.file.sizeBytes)}
+                          {message.file.mimeType} â€šÂ· {formatFileSize(message.file.sizeBytes)}
                         </p>
                       </button>
                     ) : (
@@ -426,7 +538,7 @@ export function CallPlaceholderPage() {
           to={`/session/${sessionId}/history`}
           className="inline-block text-sm text-cyan-300 hover:text-cyan-200"
         >
-          View persisted session history →
+          {"View persisted session history ->"}
         </Link>
       </div>
     </Shell>
