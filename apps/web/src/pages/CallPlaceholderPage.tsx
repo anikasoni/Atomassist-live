@@ -12,6 +12,7 @@ import {
   getCustomerToken,
 } from "../lib/auth";
 import { createRealtimeSocket } from "../lib/socket";
+import { formatDurationSeconds } from "../lib/time";
 
 interface RoomState {
   session: Session | null;
@@ -44,6 +45,8 @@ export function CallPlaceholderPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingChunksRef = useRef<Blob[]>([]);
   const recordingStreamRef = useRef<MediaStream | null>(null);
+  const recordingIdRef = useRef<string | null>(null);
+  const recordingStartedAtRef = useRef<number | null>(null);
 
   const [session, setSession] = useState<Session | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -56,6 +59,7 @@ export function CallPlaceholderPage() {
   const [ending, setEnding] = useState(false);
   const [recording, setRecording] = useState(false);
   const [recordingStatus, setRecordingStatus] = useState("");
+  const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
 
   const role = searchParams.get("role");
 
@@ -140,6 +144,22 @@ export function CallPlaceholderPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
+  useEffect(() => {
+    if (!recording || !recordingStartedAtRef.current) return;
+
+    const recordingTimerId = window.setInterval(() => {
+      if (!recordingStartedAtRef.current) return;
+
+      setRecordingElapsedSeconds(
+        Math.floor((Date.now() - recordingStartedAtRef.current) / 1000)
+      );
+    }, 1000);
+
+    return () => {
+      window.clearInterval(recordingTimerId);
+    };
+  }, [recording]);
+
   async function sendMessage(event: FormEvent) {
     event.preventDefault();
 
@@ -218,13 +238,25 @@ export function CallPlaceholderPage() {
   }
 
   async function uploadRecordingBlob(blob: Blob) {
-    if (!token || !sessionId) return;
+    if (!token || !sessionId || !recordingIdRef.current) {
+      setError("Recording upload failed because recording lifecycle was not initialized.");
+      return;
+    }
 
-    setRecordingStatus("Uploading tab recording...");
+    setRecordingStatus("Processing and uploading tab recording...");
 
     try {
-      await api.uploadSessionRecording(token, sessionId, blob);
-      setRecordingStatus("Tab recording saved to session history.");
+      await api.uploadRecordingBlob(
+        token,
+        sessionId,
+        recordingIdRef.current,
+        blob
+      );
+
+      setRecordingStatus("Tab recording is READY in session history.");
+      recordingIdRef.current = null;
+      recordingStartedAtRef.current = null;
+      setRecordingElapsedSeconds(0);
     } catch (err) {
       if (err instanceof ApiError) setError(err.message);
       else setError("Recording upload failed");
@@ -243,6 +275,16 @@ export function CallPlaceholderPage() {
         video: true,
         audio: true,
       });
+
+      if (!token || !sessionId) {
+        throw new Error("Missing agent session token for recording.");
+      }
+
+      const startedRecording = await api.startSessionRecording(token, sessionId);
+
+      recordingIdRef.current = startedRecording.recording.id;
+      recordingStartedAtRef.current = Date.now();
+      setRecordingElapsedSeconds(0);
 
       recordingStreamRef.current = stream;
       recordingChunksRef.current = [];
@@ -284,7 +326,7 @@ export function CallPlaceholderPage() {
 
       recorder.start(1000);
       setRecording(true);
-      setRecordingStatus("Tab recording in progress. Select the AtomAssist tab/window for best results.");
+      setRecordingStatus("Recording IN_PROGRESS. Select the AtomAssist tab/window for best results.");
     } catch (err) {
       if (err instanceof Error) setError(err.message);
       else setError("Could not start recording");
@@ -295,7 +337,7 @@ export function CallPlaceholderPage() {
 
   function stopRecording() {
     if (mediaRecorderRef.current?.state === "recording") {
-      setRecordingStatus("Finalizing tab recording...");
+      setRecordingStatus("Recording PROCESSING. Finalizing local capture...");
       mediaRecorderRef.current.stop();
     }
   }
@@ -393,7 +435,12 @@ export function CallPlaceholderPage() {
 
         {recordingStatus && (
           <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-sm text-amber-100">
-            {recordingStatus}
+            <div>{recordingStatus}</div>
+            {recording && (
+              <div className="mt-1 text-xs text-amber-200">
+                Recording duration: {formatDurationSeconds(recordingElapsedSeconds)}
+              </div>
+            )}
           </div>
         )}
 
@@ -489,7 +536,7 @@ export function CallPlaceholderPage() {
                           {message.file.originalName}
                         </p>
                         <p className="mt-1 text-[10px] text-slate-500">
-                          {message.file.mimeType} â€šÂ· {formatFileSize(message.file.sizeBytes)}
+                          {message.file.mimeType} Ã¢â‚¬Å¡Ã‚Â· {formatFileSize(message.file.sizeBytes)}
                         </p>
                       </button>
                     ) : (

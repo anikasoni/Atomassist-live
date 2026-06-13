@@ -245,6 +245,19 @@ export const api = {
     );
   },
 
+  startSessionRecording(token: string, sessionId: string) {
+    return request<{ recording: Recording }>(
+      `/api/sessions/${sessionId}/recordings/start`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({}),
+      }
+    );
+  },
+
   uploadSessionRecording(token: string, sessionId: string, recording: Blob) {
     const formData = new FormData();
     formData.append(
@@ -255,6 +268,31 @@ export const api = {
 
     return request<{ recording: Recording }>(
       `/api/sessions/${sessionId}/recordings/upload`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    );
+  },
+
+  uploadRecordingBlob(
+    token: string,
+    sessionId: string,
+    recordingId: string,
+    recording: Blob
+  ) {
+    const formData = new FormData();
+    formData.append(
+      "recording",
+      recording,
+      `atomassist-session-${sessionId}.webm`
+    );
+
+    return request<{ recording: Recording }>(
+      `/api/sessions/${sessionId}/recordings/${recordingId}/upload`,
       {
         method: "POST",
         headers: {

@@ -20,7 +20,7 @@ function safeFolderName(value: string) {
 
 const storage = multer.diskStorage({
   destination(req, _file, cb) {
-    const sessionId = safeFolderName(String(req.params.id));
+    const sessionId = safeFolderName(String(req.params.id ?? "unknown"));
     const dir = path.join(RECORDING_ROOT, sessionId);
 
     fs.mkdirSync(dir, { recursive: true });
@@ -70,7 +70,7 @@ async function assertAgentCanRecord(input: {
   }
 
   if (input.user.role !== "ADMIN" && session.agentId !== input.user.id) {
-    throw new AppError(403, "Only the assigned agent or admin can upload recordings", "RECORDING_UPLOAD_DENIED");
+    throw new AppError(403, "Only the assigned agent or admin can manage recordings", "RECORDING_ACCESS_DENIED");
   }
 
   return session;
@@ -107,6 +107,42 @@ async function assertCanDownloadRecording(input: {
 
   return recording;
 }
+
+recordingRouter.post(
+  "/sessions/:id/recordings/start",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const sessionId = String(req.params.id);
+
+    await assertAgentCanRecord({
+      sessionId,
+      user: req.user!,
+    });
+
+    const recording = await prisma.recording.create({
+      data: {
+        sessionId,
+        startedByAgentId: req.user!.id,
+        status: "IN_PROGRESS",
+        startedAt: new Date(),
+      },
+    });
+
+    await logSessionEvent({
+      sessionId,
+      type: "RECORDING_STARTED",
+      payload: {
+        recordingId: recording.id,
+        startedBy: req.user!.id,
+        mode: "browser_tab_mvp",
+      },
+    });
+
+    res.status(201).json({
+      recording,
+    });
+  })
+);
 
 recordingRouter.post(
   "/sessions/:id/recordings/upload",
@@ -151,11 +187,91 @@ recordingRouter.post(
         recordingId: recording.id,
         sizeBytes: req.file.size,
         mimeType: req.file.mimetype,
+        mode: "legacy_direct_upload",
       },
     });
 
     res.status(201).json({
       recording,
+    });
+  })
+);
+
+recordingRouter.post(
+  "/sessions/:id/recordings/:recordingId/upload",
+  requireAuth,
+  upload.single("recording"),
+  asyncHandler(async (req, res) => {
+    const sessionId = String(req.params.id);
+    const recordingId = String(req.params.recordingId);
+
+    if (!req.file) {
+      throw new AppError(400, "No recording uploaded", "NO_RECORDING_UPLOADED");
+    }
+
+    await assertAgentCanRecord({
+      sessionId,
+      user: req.user!,
+    });
+
+    const existingRecording = await prisma.recording.findUnique({
+      where: {
+        id: recordingId,
+      },
+    });
+
+    if (!existingRecording || existingRecording.sessionId !== sessionId) {
+      throw new AppError(404, "Recording not found for this session", "RECORDING_NOT_FOUND");
+    }
+
+    const resolvedPath = path.resolve(req.file.path);
+
+    if (!resolvedPath.startsWith(RECORDING_ROOT)) {
+      throw new AppError(400, "Invalid recording path", "INVALID_RECORDING_PATH");
+    }
+
+    const processingRecording = await prisma.recording.update({
+      where: {
+        id: recordingId,
+      },
+      data: {
+        status: "PROCESSING",
+        stoppedAt: new Date(),
+      },
+    });
+
+    await logSessionEvent({
+      sessionId,
+      type: "RECORDING_PROCESSING",
+      payload: {
+        recordingId: processingRecording.id,
+      },
+    });
+
+    const readyRecording = await prisma.recording.update({
+      where: {
+        id: recordingId,
+      },
+      data: {
+        status: "READY",
+        storagePath: resolvedPath,
+        readyAt: new Date(),
+      },
+    });
+
+    await logSessionEvent({
+      sessionId,
+      type: "RECORDING_READY",
+      payload: {
+        recordingId: readyRecording.id,
+        sizeBytes: req.file.size,
+        mimeType: req.file.mimetype,
+        mode: "browser_tab_mvp",
+      },
+    });
+
+    res.status(201).json({
+      recording: readyRecording,
     });
   })
 );
@@ -169,7 +285,7 @@ recordingRouter.get(
       user: req.user!,
     });
 
-    if (!recording.storagePath) {
+    if (recording.status !== "READY" || !recording.storagePath) {
       throw new AppError(404, "Recording file not ready", "RECORDING_NOT_READY");
     }
 
