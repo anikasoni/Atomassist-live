@@ -1,34 +1,50 @@
-﻿import cors from "cors";
-import dotenv from "dotenv";
+import cors from "cors";
 import express from "express";
 import type { HealthResponse } from "@atomassist/shared";
-
-dotenv.config();
+import { env } from "./config/env.js";
+import { prisma } from "./db/prisma.js";
+import { apiRouter } from "./routes/index.js";
+import { errorHandler, notFoundHandler } from "./middleware/error.js";
 
 const app = express();
 
-const PORT = Number(process.env.PORT || 4000);
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
-
 app.use(
-cors({
-origin: FRONTEND_ORIGIN,
-credentials: true,
-})
+  cors({
+    origin: env.FRONTEND_ORIGIN,
+    credentials: true,
+  })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-app.get("/health", (_req, res) => {
-const response: HealthResponse = {
-status: "ok",
-service: "atomassist-server",
-};
+app.get("/health", async (_req, res) => {
+  await prisma.$queryRaw`SELECT 1`;
 
-res.json(response);
+  const response: HealthResponse = {
+    status: "ok",
+    service: "atomassist-server",
+  };
+
+  res.json(response);
 });
 
-app.listen(PORT, () => {
-console.log(`AtomAssist server running on http://localhost:${PORT}`);
-console.log(`Allowed frontend origin: ${FRONTEND_ORIGIN}`);
+app.use("/api", apiRouter);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+const server = app.listen(env.PORT, () => {
+  console.log(`AtomAssist server running on http://localhost:${env.PORT}`);
+  console.log(`Allowed frontend origin: ${env.FRONTEND_ORIGIN}`);
 });
+
+function shutdown(signal: string) {
+  console.log(`[shutdown] received ${signal}`);
+  server.close(async () => {
+    await prisma.$disconnect();
+    process.exit(0);
+  });
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

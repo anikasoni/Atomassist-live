@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SessionStatus {
+  WAITING
+  ACTIVE
+  ENDED
+}
+
+enum ParticipantRole {
+  AGENT
+  CUSTOMER
+}
+
+enum ParticipantStatus {
+  JOINED
+  CONNECTED
+  RECONNECTING
+  LEFT
+}
+
+enum ChatMessageType {
+  TEXT
+  FILE
+}
+
+enum RecordingStatus {
+  IN_PROGRESS
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Session {
+  id              String          @id @default(cuid())
+  status          SessionStatus   @default(WAITING)
+  agentId         String
+  inviteTokenHash String          @unique
+  createdAt       DateTime        @default(now())
+  startedAt       DateTime?
+  endedAt         DateTime?
+  endReason       String?
+
+  participants    Participant[]
+  events          SessionEvent[]
+  chatMessages    ChatMessage[]
+  files           FileAsset[]
+  recordings      Recording[]
+
+  @@index([agentId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Participant {
+  id          String            @id @default(cuid())
+  sessionId   String
+  role        ParticipantRole
+  displayName String
+  status      ParticipantStatus @default(JOINED)
+  joinedAt    DateTime          @default(now())
+  lastSeenAt  DateTime?
+  leftAt      DateTime?
+  socketId    String?
+
+  session      Session        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  events       SessionEvent[]
+  chatMessages ChatMessage[]
+  files        FileAsset[]
+
+  @@index([sessionId])
+  @@index([role])
+  @@index([status])
+}
+
+model SessionEvent {
+  id            String       @id @default(cuid())
+  sessionId     String
+  participantId String?
+  type          String
+  payload       Json?
+  createdAt     DateTime     @default(now())
+
+  session     Session      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  participant Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model ChatMessage {
+  id                  String          @id @default(cuid())
+  sessionId           String
+  senderParticipantId String
+  messageType         ChatMessageType @default(TEXT)
+  body                String
+  fileId              String?
+  createdAt           DateTime        @default(now())
+
+  session           Session     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  senderParticipant Participant @relation(fields: [senderParticipantId], references: [id], onDelete: Cascade)
+  file              FileAsset?  @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model FileAsset {
+  id                       String   @id @default(cuid())
+  sessionId                String
+  uploadedByParticipantId  String
+  originalName             String
+  mimeType                 String
+  sizeBytes                Int
+  storagePath              String
+  createdAt                DateTime @default(now())
+
+  session     Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  uploadedBy  Participant   @relation(fields: [uploadedByParticipantId], references: [id], onDelete: Cascade)
+  messages    ChatMessage[]
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+model Recording {
+  id               String          @id @default(cuid())
+  sessionId        String
+  startedByAgentId String
+  status           RecordingStatus @default(IN_PROGRESS)
+  storagePath      String?
+  startedAt        DateTime        @default(now())
+  stoppedAt        DateTime?
+  readyAt          DateTime?
+
+  session Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([status])
+}
