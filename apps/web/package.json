@@ -12,6 +12,7 @@
   "dependencies": {
     "@atomassist/shared": "workspace:*",
     "@vitejs/plugin-react": "^4.3.4",
+    "mediasoup-client": "3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.17.0",

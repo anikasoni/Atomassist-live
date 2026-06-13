@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import type { Socket } from "socket.io-client";
 import { Shell } from "../components/Shell";
 import { ErrorMessage, StatusBadge } from "../components/ui";
+import { MediaRoom } from "../components/media/MediaRoom";
 import type { ChatMessage, Participant, Session } from "../lib/api";
 import {
   getAgentToken,
@@ -188,7 +189,7 @@ export function CallPlaceholderPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-200">
-              Phase 4 Â· Presence + Chat
+              Phase 4 Ã‚Â· Presence + Chat
             </div>
 
             <h1 className="text-3xl font-bold">Live Support Room</h1>
@@ -224,20 +225,22 @@ export function CallPlaceholderPage() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <section className="space-y-6">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="aspect-video rounded-2xl border border-white/10 bg-slate-900 p-5">
-                <p className="text-sm text-slate-400">Local video placeholder</p>
-                <p className="mt-2 text-xs text-slate-600">
-                  WebRTC SFU video comes in Phase 5.
-                </p>
+            {socketRef.current && sessionId && connectionStatus === "connected" ? (
+              <MediaRoom
+                socket={socketRef.current}
+                sessionId={sessionId}
+                enabled={connectionStatus === "connected" && session?.status !== "ENDED"}
+              />
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="aspect-video rounded-2xl border border-white/10 bg-slate-900 p-5">
+                  <p className="text-sm text-slate-400">Local video loading...</p>
+                </div>
+                <div className="aspect-video rounded-2xl border border-white/10 bg-slate-900 p-5">
+                  <p className="text-sm text-slate-400">Remote video loading...</p>
+                </div>
               </div>
-              <div className="aspect-video rounded-2xl border border-white/10 bg-slate-900 p-5">
-                <p className="text-sm text-slate-400">Remote video placeholder</p>
-                <p className="mt-2 text-xs text-slate-600">
-                  Media will route through mediasoup.
-                </p>
-              </div>
-            </div>
+            )}
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
               <h2 className="font-semibold">Participants</h2>
@@ -329,7 +332,7 @@ export function CallPlaceholderPage() {
           to={`/session/${sessionId}/history`}
           className="inline-block text-sm text-cyan-300 hover:text-cyan-200"
         >
-          View persisted session history â†’
+          View persisted session history Ã¢â€ â€™
         </Link>
       </div>
     </Shell>

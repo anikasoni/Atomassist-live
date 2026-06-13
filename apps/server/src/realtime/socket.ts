@@ -3,9 +3,10 @@ import { Server, type Socket } from "socket.io";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { prisma } from "../db/prisma.js";
+import { mediaService } from "../media/media.service.js";
 import { logSessionEvent } from "../services/event.service.js";
-import { verifyAuthToken } from "../utils/tokens.js";
 import type { AuthUser } from "../types/auth.js";
+import { verifyAuthToken } from "../utils/tokens.js";
 
 const RECONNECT_GRACE_MS = 60_000;
 
@@ -25,6 +26,45 @@ const endSessionSchema = z.object({
   reason: z.string().max(200).optional(),
 });
 
+const mediaSessionSchema = z.object({
+  sessionId: z.string().min(1),
+});
+
+const createTransportSchema = z.object({
+  sessionId: z.string().min(1),
+  direction: z.enum(["send", "recv"]),
+});
+
+const connectTransportSchema = z.object({
+  sessionId: z.string().min(1),
+  transportId: z.string().min(1),
+  dtlsParameters: z.any(),
+});
+
+const produceSchema = z.object({
+  sessionId: z.string().min(1),
+  transportId: z.string().min(1),
+  kind: z.enum(["audio", "video"]),
+  rtpParameters: z.any(),
+  appData: z.record(z.string(), z.unknown()).optional(),
+});
+
+const consumeSchema = z.object({
+  sessionId: z.string().min(1),
+  producerId: z.string().min(1),
+  rtpCapabilities: z.any(),
+});
+
+const resumeConsumerSchema = z.object({
+  sessionId: z.string().min(1),
+  consumerId: z.string().min(1),
+});
+
+const closeProducerSchema = z.object({
+  sessionId: z.string().min(1),
+  producerId: z.string().min(1),
+});
+
 type Ack =
   | { ok: true; data?: unknown }
   | { ok: false; error: { code: string; message: string } };
@@ -41,6 +81,17 @@ function socketError(code: string, message: string): Ack {
       message,
     },
   };
+}
+
+function getJoinedSocketData(socket: Socket) {
+  const sessionId = socket.data.sessionId as string | undefined;
+  const participantId = socket.data.participantId as string | undefined;
+
+  if (!sessionId || !participantId) {
+    throw new Error("Socket has not joined a session");
+  }
+
+  return { sessionId, participantId };
 }
 
 async function getRoomState(sessionId: string) {
@@ -197,12 +248,21 @@ async function resolveParticipantForSocket(input: {
   };
 }
 
-async function startReconnectWindow(io: Server, input: {
-  sessionId: string;
-  participantId: string;
-  reason: string;
-}) {
+async function startReconnectWindow(
+  io: Server,
+  input: {
+    sessionId: string;
+    participantId: string;
+    reason: string;
+  }
+) {
   const { sessionId, participantId, reason } = input;
+
+  const closedProducers = mediaService.closePeer(sessionId, participantId);
+
+  for (const producer of closedProducers) {
+    io.to(roomName(sessionId)).emit("media:producerClosed", producer);
+  }
 
   const session = await prisma.session.findUnique({
     where: {
@@ -330,13 +390,15 @@ async function startReconnectWindow(io: Server, input: {
           },
         });
 
-        for (const participant of activeSession.participants) {
-          const timer = reconnectTimers.get(participant.id);
+        for (const roomParticipant of activeSession.participants) {
+          const timer = reconnectTimers.get(roomParticipant.id);
           if (timer) {
             clearTimeout(timer);
-            reconnectTimers.delete(participant.id);
+            reconnectTimers.delete(roomParticipant.id);
           }
         }
+
+        mediaService.closeRoom(sessionId);
 
         await logSessionEvent({
           sessionId,
@@ -363,11 +425,14 @@ async function startReconnectWindow(io: Server, input: {
   reconnectTimers.set(participantId, timer);
 }
 
-async function handleSessionEnd(io: Server, input: {
-  user: AuthUser;
-  sessionId: string;
-  reason?: string;
-}) {
+async function handleSessionEnd(
+  io: Server,
+  input: {
+    user: AuthUser;
+    sessionId: string;
+    reason?: string;
+  }
+) {
   const { user, sessionId, reason } = input;
 
   if (user.role !== "AGENT" && user.role !== "ADMIN") {
@@ -429,6 +494,8 @@ async function handleSessionEnd(io: Server, input: {
       reconnectTimers.delete(participant.id);
     }
   }
+
+  mediaService.closeRoom(session.id);
 
   await logSessionEvent({
     sessionId: session.id,
@@ -630,6 +697,215 @@ export function initRealtime(httpServer: HttpServer) {
     socket.on("session:leave", async (_payload, ack?: (response: Ack) => void) => {
       ack?.({ ok: true });
       socket.disconnect();
+    });
+
+    socket.on("media:getRouterRtpCapabilities", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = mediaSessionSchema.parse(payload);
+        const { sessionId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        const rtpCapabilities = await mediaService.getRouterRtpCapabilities(body.sessionId);
+
+        ack?.({
+          ok: true,
+          data: rtpCapabilities,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to get RTP capabilities";
+        ack?.(socketError("MEDIA_RTP_CAPABILITIES_FAILED", message));
+      }
+    });
+
+    socket.on("media:createWebRtcTransport", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = createTransportSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        const transportOptions = await mediaService.createWebRtcTransport({
+          sessionId,
+          participantId,
+          direction: body.direction,
+        });
+
+        ack?.({
+          ok: true,
+          data: transportOptions,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to create WebRTC transport";
+        ack?.(socketError("MEDIA_CREATE_TRANSPORT_FAILED", message));
+      }
+    });
+
+    socket.on("media:connectTransport", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = connectTransportSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        await mediaService.connectTransport({
+          sessionId,
+          participantId,
+          transportId: body.transportId,
+          dtlsParameters: body.dtlsParameters,
+        });
+
+        ack?.({ ok: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to connect transport";
+        ack?.(socketError("MEDIA_CONNECT_TRANSPORT_FAILED", message));
+      }
+    });
+
+    socket.on("media:produce", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = produceSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        const producer = await mediaService.produce({
+          sessionId,
+          participantId,
+          transportId: body.transportId,
+          kind: body.kind,
+          rtpParameters: body.rtpParameters,
+          appData: body.appData,
+        });
+
+        socket.to(roomName(sessionId)).emit("media:newProducer", {
+          producerId: producer.id,
+          participantId,
+          kind: producer.kind,
+        });
+
+        ack?.({
+          ok: true,
+          data: {
+            id: producer.id,
+          },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to produce media";
+        ack?.(socketError("MEDIA_PRODUCE_FAILED", message));
+      }
+    });
+
+    socket.on("media:listProducers", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = mediaSessionSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        const producers = mediaService.listRemoteProducers({
+          sessionId,
+          participantId,
+        });
+
+        ack?.({
+          ok: true,
+          data: producers,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to list producers";
+        ack?.(socketError("MEDIA_LIST_PRODUCERS_FAILED", message));
+      }
+    });
+
+    socket.on("media:consume", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = consumeSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        const consumer = await mediaService.consume({
+          sessionId,
+          participantId,
+          producerId: body.producerId,
+          rtpCapabilities: body.rtpCapabilities,
+        });
+
+        ack?.({
+          ok: true,
+          data: {
+            id: consumer.id,
+            producerId: body.producerId,
+            kind: consumer.kind,
+            rtpParameters: consumer.rtpParameters,
+          },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to consume media";
+        ack?.(socketError("MEDIA_CONSUME_FAILED", message));
+      }
+    });
+
+    socket.on("media:resumeConsumer", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = resumeConsumerSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        await mediaService.resumeConsumer({
+          sessionId,
+          participantId,
+          consumerId: body.consumerId,
+        });
+
+        ack?.({ ok: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to resume consumer";
+        ack?.(socketError("MEDIA_RESUME_CONSUMER_FAILED", message));
+      }
+    });
+
+    socket.on("media:closeProducer", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = closeProducerSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        mediaService.closeProducer({
+          sessionId,
+          participantId,
+          producerId: body.producerId,
+        });
+
+        socket.to(roomName(sessionId)).emit("media:producerClosed", {
+          producerId: body.producerId,
+          participantId,
+        });
+
+        ack?.({ ok: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to close producer";
+        ack?.(socketError("MEDIA_CLOSE_PRODUCER_FAILED", message));
+      }
     });
 
     socket.on("disconnect", async (reason) => {
