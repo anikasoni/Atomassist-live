@@ -3,6 +3,7 @@ import { Server, type Socket } from "socket.io";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { prisma } from "../db/prisma.js";
+import { setActiveSocketConnections } from "../metrics/metrics.service.js";
 import { mediaService } from "../media/media.service.js";
 import { logSessionEvent } from "../services/event.service.js";
 import type { AuthUser } from "../types/auth.js";
@@ -76,6 +77,10 @@ type Ack =
 
 function roomName(sessionId: string) {
   return `session:${sessionId}`;
+}
+
+function updateSocketMetrics(io: Server) {
+  setActiveSocketConnections(io.engine.clientsCount);
 }
 
 function socketError(code: string, message: string): Ack {
@@ -549,6 +554,8 @@ export function initRealtime(httpServer: HttpServer) {
   io.on("connection", (socket: Socket) => {
     const user = socket.data.user as AuthUser;
 
+    updateSocketMetrics(io);
+
     console.log(`[socket] connected ${socket.id} as ${user.role}:${user.id}`);
 
     socket.on("session:join", async (payload, ack?: (response: Ack) => void) => {
@@ -963,6 +970,8 @@ export function initRealtime(httpServer: HttpServer) {
     });
 
     socket.on("disconnect", async (reason) => {
+      updateSocketMetrics(io);
+
       console.log(`[socket] disconnected ${socket.id}: ${reason}`);
 
       const sessionId = socket.data.sessionId as string | undefined;

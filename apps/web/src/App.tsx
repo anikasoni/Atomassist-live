@@ -7,6 +7,7 @@ import { CallPlaceholderPage } from "./pages/CallPlaceholderPage";
 import { HomePage } from "./pages/HomePage";
 import { JoinPage } from "./pages/JoinPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { ObservabilityPage } from "./pages/ObservabilityPage";
 import { SessionHistoryPage } from "./pages/SessionHistoryPage";
 import { ProtectedAdminRoute } from "./routes/ProtectedAdminRoute";
 import { ProtectedAgentRoute } from "./routes/ProtectedAgentRoute";
@@ -41,6 +42,15 @@ export function App() {
           element={
             <ProtectedAdminRoute>
               <AdminDashboardPage />
+            </ProtectedAdminRoute>
+          }
+        />
+
+        <Route
+          path="/admin/observability"
+          element={
+            <ProtectedAdminRoute>
+              <ObservabilityPage />
             </ProtectedAdminRoute>
           }
         />

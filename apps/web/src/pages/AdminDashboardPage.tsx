@@ -118,6 +118,13 @@ export function AdminDashboardPage() {
             >
               Refresh
             </button>
+            <Link
+              to="/admin/observability"
+              className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-3 font-semibold text-emerald-100 hover:bg-emerald-400/20"
+            >
+              Observability
+            </Link>
+
             <button
               onClick={logout}
               className="rounded-xl border border-white/10 px-5 py-3 font-semibold hover:bg-white/10"

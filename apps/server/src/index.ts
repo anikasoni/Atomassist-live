@@ -5,8 +5,10 @@ import type { HealthResponse } from "@atomassist/shared";
 import { env } from "./config/env.js";
 import { prisma } from "./db/prisma.js";
 import { errorHandler, notFoundHandler } from "./middleware/error.js";
+import { metricsMiddleware } from "./middleware/metrics.js";
 import { initRealtime } from "./realtime/socket.js";
 import { apiRouter } from "./routes/index.js";
+import { metricsRouter } from "./routes/metrics.routes.js";
 
 const app = express();
 
@@ -18,6 +20,7 @@ app.use(
 );
 
 app.use(express.json({ limit: "1mb" }));
+app.use(metricsMiddleware);
 
 app.get("/health", async (_req, res) => {
   await prisma.$queryRaw`SELECT 1`;
@@ -29,6 +32,8 @@ app.get("/health", async (_req, res) => {
 
   res.json(response);
 });
+
+app.use(metricsRouter);
 
 app.use("/api", apiRouter);
 
