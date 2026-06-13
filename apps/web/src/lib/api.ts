@@ -16,10 +16,12 @@ async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const isFormData = options.body instanceof FormData;
+
   const res = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options.headers ?? {}),
     },
   });
@@ -75,6 +77,17 @@ export interface Participant {
 }
 
 
+export interface FileAsset {
+  id: string;
+  sessionId: string;
+  uploadedByParticipantId: string;
+  originalName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storagePath?: string;
+  createdAt: string;
+}
+
 export interface ChatMessage {
   id: string;
   sessionId: string;
@@ -82,6 +95,7 @@ export interface ChatMessage {
   messageType: "TEXT" | "FILE";
   body: string;
   fileId?: string | null;
+  file?: FileAsset | null;
   createdAt: string;
   senderParticipant?: {
     id: string;
@@ -181,6 +195,51 @@ export const api = {
       },
       body: JSON.stringify({ reason }),
     });
+  },
+
+  uploadSessionFile(token: string, sessionId: string, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return request<{ file: FileAsset; message: ChatMessage }>(
+      `/api/sessions/${sessionId}/files`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      }
+    );
+  },
+
+  async downloadFile(token: string, fileId: string, originalName: string) {
+    const res = await fetch(`${API_BASE_URL}/api/files/${fileId}/download`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new ApiError(
+        res.status,
+        data?.error?.message ?? "Failed to download file",
+        data?.error?.code
+      );
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = url;
+    anchor.download = originalName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+
+    URL.revokeObjectURL(url);
   },
 
   validateInvite(inviteToken: string) {

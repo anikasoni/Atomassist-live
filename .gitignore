@@ -7,3 +7,4 @@ recordings/
 coverage/
 .DS_Store
 .vscode/
+apps/server/uploads/

@@ -1,9 +1,10 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import type { Socket } from "socket.io-client";
+import { MediaRoom } from "../components/media/MediaRoom";
 import { Shell } from "../components/Shell";
 import { ErrorMessage, StatusBadge } from "../components/ui";
-import { MediaRoom } from "../components/media/MediaRoom";
+import { api, ApiError } from "../lib/api";
 import type { ChatMessage, Participant, Session } from "../lib/api";
 import {
   getAgentToken,
@@ -24,6 +25,15 @@ interface Ack {
   };
 }
 
+function formatFileSize(sizeBytes?: number) {
+  if (!sizeBytes) return "";
+
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function CallPlaceholderPage() {
   const { sessionId } = useParams();
   const [searchParams] = useSearchParams();
@@ -39,6 +49,7 @@ export function CallPlaceholderPage() {
   const [error, setError] = useState("");
   const [connectionStatus, setConnectionStatus] = useState("connecting");
   const [sending, setSending] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [ending, setEnding] = useState(false);
 
   const role = searchParams.get("role");
@@ -150,6 +161,57 @@ export function CallPlaceholderPage() {
     );
   }
 
+  async function uploadFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
+    if (!file || !sessionId || !token || !socketRef.current) return;
+
+    setUploading(true);
+    setError("");
+
+    try {
+      const result = await api.uploadSessionFile(token, sessionId, file);
+
+      socketRef.current.emit(
+        "file:uploaded",
+        {
+          sessionId,
+          messageId: result.message.id,
+        },
+        (ack: Ack) => {
+          if (!ack?.ok) {
+            setError(ack?.error?.message ?? "File uploaded but realtime broadcast failed");
+            setMessages((current) => {
+              if (current.some((item) => item.id === result.message.id)) {
+                return current;
+              }
+
+              return [...current, result.message];
+            });
+          }
+        }
+      );
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else if (err instanceof Error) setError(err.message);
+      else setError("File upload failed");
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  }
+
+  async function downloadFile(message: ChatMessage) {
+    if (!token || !message.file) return;
+
+    try {
+      await api.downloadFile(token, message.file.id, message.file.originalName);
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError("Download failed");
+    }
+  }
+
   function leaveCall() {
     socketRef.current?.emit("session:leave", {}, () => {
       socketRef.current?.disconnect();
@@ -189,7 +251,7 @@ export function CallPlaceholderPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 inline-flex rounded-full border border-cyan-400/30 bg-cyan-400/10 px-4 py-2 text-sm text-cyan-200">
-              Live SFU Call · Self-hosted mediasoup
+              Live SFU Call · Chat · File Sharing
             </div>
 
             <h1 className="text-3xl font-bold">Live Video Support Room</h1>
@@ -206,7 +268,7 @@ export function CallPlaceholderPage() {
               onClick={leaveCall}
               className="rounded-xl border border-white/10 px-4 py-3 font-semibold hover:bg-white/10"
             >
-              Leave
+              Leave Call
             </button>
 
             {isAgent && (
@@ -234,10 +296,10 @@ export function CallPlaceholderPage() {
             ) : (
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="aspect-video rounded-2xl border border-white/10 bg-slate-900 p-5">
-                  <p className="text-sm text-slate-400">Local video loading...</p>
+                  <p className="text-sm text-slate-400">Local camera loading...</p>
                 </div>
                 <div className="aspect-video rounded-2xl border border-white/10 bg-slate-900 p-5">
-                  <p className="text-sm text-slate-400">Remote video loading...</p>
+                  <p className="text-sm text-slate-400">Remote participant loading...</p>
                 </div>
               </div>
             )}
@@ -274,7 +336,8 @@ export function CallPlaceholderPage() {
               </div>
 
               <p className="mt-4 text-xs text-slate-500">
-                Customer disconnects are held for a 60-second reconnect window. If the customer does not return, the session auto-ends and the invite expires.
+                Customer disconnects are held for a 60-second reconnect window.
+                If the customer does not return, the session auto-ends and the invite expires.
               </p>
             </div>
           </section>
@@ -283,7 +346,7 @@ export function CallPlaceholderPage() {
             <div className="border-b border-white/10 p-4">
               <h2 className="font-semibold">In-call Chat</h2>
               <p className="text-xs text-slate-500">
-                Messages are persisted to the session record.
+                Text messages and shared files are persisted to the session record.
               </p>
             </div>
 
@@ -301,7 +364,25 @@ export function CallPlaceholderPage() {
                         {new Date(message.createdAt).toLocaleTimeString()}
                       </p>
                     </div>
-                    <p className="text-sm text-slate-200">{message.body}</p>
+
+                    {message.messageType === "FILE" && message.file ? (
+                      <button
+                        onClick={() => void downloadFile(message)}
+                        className="mt-2 w-full rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-3 text-left hover:bg-cyan-400/20"
+                      >
+                        <p className="text-sm font-semibold text-cyan-100">
+                          Download file
+                        </p>
+                        <p className="mt-1 break-all text-xs text-slate-300">
+                          {message.file.originalName}
+                        </p>
+                        <p className="mt-1 text-[10px] text-slate-500">
+                          {message.file.mimeType} · {formatFileSize(message.file.sizeBytes)}
+                        </p>
+                      </button>
+                    ) : (
+                      <p className="text-sm text-slate-200">{message.body}</p>
+                    )}
                   </div>
                 ))
               )}
@@ -309,6 +390,20 @@ export function CallPlaceholderPage() {
             </div>
 
             <form onSubmit={sendMessage} className="border-t border-white/10 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <label className="cursor-pointer rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/10">
+                  {uploading ? "Uploading..." : "Attach File"}
+                  <input
+                    type="file"
+                    hidden
+                    disabled={uploading || session?.status === "ENDED"}
+                    onChange={uploadFile}
+                  />
+                </label>
+
+                <p className="text-xs text-slate-500">Max 10 MB</p>
+              </div>
+
               <div className="flex gap-2">
                 <input
                   value={draft}

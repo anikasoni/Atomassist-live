@@ -2,8 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Shell } from "../components/Shell";
 import { ErrorMessage, StatusBadge } from "../components/ui";
-import { api, ApiError, Session } from "../lib/api";
+import { api, ApiError, ChatMessage, Session } from "../lib/api";
 import { getAgentToken, getCustomerToken } from "../lib/auth";
+
+function formatFileSize(sizeBytes?: number) {
+  if (!sizeBytes) return "";
+
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function SessionHistoryPage() {
   const { sessionId } = useParams();
@@ -11,6 +20,19 @@ export function SessionHistoryPage() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState("");
+
+  async function downloadHistoryFile(message: ChatMessage) {
+    const token = getAgentToken() ?? getCustomerToken();
+
+    if (!token || !message.file) return;
+
+    try {
+      await api.downloadFile(token, message.file.id, message.file.originalName);
+    } catch (err) {
+      if (err instanceof ApiError) setError(err.message);
+      else setError("Download failed");
+    }
+  }
 
   useEffect(() => {
     async function loadHistory() {
@@ -75,7 +97,7 @@ export function SessionHistoryPage() {
                   <div key={participant.id} className="rounded-xl bg-slate-900 p-4">
                     <p className="font-medium">{participant.displayName}</p>
                     <p className="text-sm text-slate-400">
-                      {participant.role} Â· {participant.status}
+                      {participant.role} Ãƒâ€šÃ‚Â· {participant.status}
                     </p>
                   </div>
                 ))}

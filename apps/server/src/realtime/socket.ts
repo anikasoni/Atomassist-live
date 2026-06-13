@@ -21,6 +21,11 @@ const chatSchema = z.object({
   body: z.string().trim().min(1).max(1000),
 });
 
+const fileUploadedSchema = z.object({
+  sessionId: z.string().min(1),
+  messageId: z.string().min(1),
+});
+
 const endSessionSchema = z.object({
   sessionId: z.string().min(1),
   reason: z.string().max(200).optional(),
@@ -671,6 +676,55 @@ export function initRealtime(httpServer: HttpServer) {
       } catch (error) {
         const message = error instanceof Error ? error.message : "Failed to send message";
         ack?.(socketError("CHAT_SEND_FAILED", message));
+      }
+    });
+
+    socket.on("file:uploaded", async (payload, ack?: (response: Ack) => void) => {
+      try {
+        const body = fileUploadedSchema.parse(payload);
+        const { sessionId, participantId } = getJoinedSocketData(socket);
+
+        if (sessionId !== body.sessionId) {
+          throw new Error("Socket session mismatch");
+        }
+
+        const message = await prisma.chatMessage.findUnique({
+          where: {
+            id: body.messageId,
+          },
+          include: {
+            senderParticipant: {
+              select: {
+                id: true,
+                displayName: true,
+                role: true,
+              },
+            },
+            file: true,
+          },
+        });
+
+        if (!message || message.sessionId !== sessionId) {
+          throw new Error("Uploaded file message not found");
+        }
+
+        if (message.senderParticipantId !== participantId) {
+          throw new Error("Cannot broadcast another participant's file");
+        }
+
+        io.to(roomName(sessionId)).emit("chat:message", {
+          message,
+        });
+
+        await emitRoomState(io, sessionId);
+
+        ack?.({
+          ok: true,
+          data: message,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to broadcast uploaded file";
+        ack?.(socketError("FILE_UPLOAD_BROADCAST_FAILED", message));
       }
     });
 
