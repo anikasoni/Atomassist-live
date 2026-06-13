@@ -131,6 +131,14 @@ export const api = {
     });
   },
 
+  me(token: string) {
+    return request<{ user: AuthUser }>("/api/auth/me", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  },
+
   listSessions(token: string) {
     return request<{ sessions: Session[] }>("/api/sessions", {
       headers: {

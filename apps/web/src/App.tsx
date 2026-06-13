@@ -7,6 +7,7 @@ import { HomePage } from "./pages/HomePage";
 import { JoinPage } from "./pages/JoinPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SessionHistoryPage } from "./pages/SessionHistoryPage";
+import { ProtectedAgentRoute } from "./routes/ProtectedAgentRoute";
 
 export function App() {
   return (
@@ -14,8 +15,25 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/agent/login" element={<AgentLoginPage />} />
-        <Route path="/agent/dashboard" element={<AgentDashboardPage />} />
-        <Route path="/agent/session/:sessionId" element={<AgentSessionPage />} />
+
+        <Route
+          path="/agent/dashboard"
+          element={
+            <ProtectedAgentRoute>
+              <AgentDashboardPage />
+            </ProtectedAgentRoute>
+          }
+        />
+
+        <Route
+          path="/agent/session/:sessionId"
+          element={
+            <ProtectedAgentRoute>
+              <AgentSessionPage />
+            </ProtectedAgentRoute>
+          }
+        />
+
         <Route path="/join/:inviteToken" element={<JoinPage />} />
         <Route path="/call/:sessionId" element={<CallPlaceholderPage />} />
         <Route path="/session/:sessionId/history" element={<SessionHistoryPage />} />

@@ -1,9 +1,9 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shell } from "../components/Shell";
 import { ErrorMessage } from "../components/ui";
 import { api, ApiError } from "../lib/api";
-import { saveAgentAuth } from "../lib/auth";
+import { getAgentToken, saveAgentAuth } from "../lib/auth";
 
 export function AgentLoginPage() {
   const navigate = useNavigate();
@@ -12,6 +12,27 @@ export function AgentLoginPage() {
   const [password, setPassword] = useState("demo123");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function verifyExistingLogin() {
+      const token = getAgentToken();
+
+      if (!token) return;
+
+      try {
+        const result = await api.me(token);
+
+        if (result.user.role === "AGENT" || result.user.role === "ADMIN") {
+          saveAgentAuth(token, result.user);
+          navigate("/agent/dashboard");
+        }
+      } catch {
+        // stale token stays handled by ProtectedAgentRoute if user navigates manually
+      }
+    }
+
+    void verifyExistingLogin();
+  }, [navigate]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();

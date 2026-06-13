@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { asyncHandler } from "../middleware/async-handler.js";
+import { requireAuth } from "../middleware/auth.js";
 import { AppError } from "../middleware/error.js";
 import { signAuthToken } from "../utils/tokens.js";
 
@@ -55,6 +56,27 @@ authRouter.post(
         email: user.email,
         role: user.role,
         displayName: user.displayName,
+      },
+    });
+  })
+);
+
+authRouter.get(
+  "/me",
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    if (!req.user) {
+      throw new AppError(401, "Authentication required", "AUTH_REQUIRED");
+    }
+
+    res.json({
+      user: {
+        id: req.user.id,
+        email: req.user.email,
+        role: req.user.role,
+        displayName: req.user.displayName,
+        sessionId: req.user.sessionId,
+        participantId: req.user.participantId,
       },
     });
   })
