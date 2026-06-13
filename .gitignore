@@ -9,3 +9,4 @@ coverage/
 .vscode/
 apps/server/uploads/
 apps/server/recordings/
+apps/web/.env.local

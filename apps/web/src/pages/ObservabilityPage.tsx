@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Shell } from "../components/Shell";
 import { ErrorMessage } from "../components/ui";
+import { API_BASE_URL } from "../lib/api";
 
 interface ParsedMetric {
   name: string;
@@ -71,7 +72,7 @@ export function ObservabilityPage() {
 
   async function loadMetrics() {
     try {
-      const response = await fetch("http://localhost:4000/metrics");
+      const response = await fetch(`${API_BASE_URL}/metrics`);
 
       if (!response.ok) {
         throw new Error(`Metrics request failed with ${response.status}`);
@@ -199,7 +200,7 @@ export function ObservabilityPage() {
             </button>
 
             <a
-              href="http://localhost:4000/metrics"
+              href={`${API_BASE_URL}/metrics`}
               target="_blank"
               rel="noreferrer"
               className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-3 font-semibold text-emerald-100 hover:bg-emerald-400/20"
