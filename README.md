@@ -1,213 +1,374 @@
 # AtomAssist Live
 
-> A self-hosted real-time video support platform with secure support sessions, mediasoup SFU video routing, realtime chat, file sharing, session review, recording artifacts, admin monitoring, and observability.
+<p align="center">
+  <strong>Self-hosted real-time video support platform with SFU media routing, secure session invites, realtime chat, file sharing, recording artifacts, admin monitoring, and support-case review.</strong>
+</p>
 
-AtomAssist Live was built for a 15-hour hackathon as a production-minded WebRTC customer support platform. It is not just a video call demo. It implements the complete support-session layer around WebRTC: agents, customers, secure invites, SFU media routing, reconnect handling, chat, files, recordings, case review, admin controls, and metrics.
-
----
-
-## Why AtomAssist Stands Out
-
-Most hackathon video apps stop at “two browsers can see each other.”
-
-AtomAssist goes further:
-
-* It uses a **self-hosted mediasoup SFU**, not a hosted video SDK.
-* It implements a real **agent-to-customer support workflow**.
-* It separates **disconnect** from **session end** with a reconnect window.
-* It persists the support session as a reviewable case record.
-* It includes chat, files, recordings, admin dashboards, and observability.
-* It documents the production path for true server-side SFU recording.
+<p align="center">
+  <em>Built for a 15-hour hackathon as a production-aware WebRTC support system.</em>
+</p>
 
 ---
 
-## Demo Screenshots
+## Executive Summary
 
-### Agent Dashboard
+AtomAssist Live is a browser-based customer support platform where an agent can create a secure video support session, invite a customer through a link, communicate over realtime video/chat, share files, handle reconnects, record session artifacts, and review the completed case.
+
+The core technical decision is that media is routed through a **self-hosted mediasoup SFU** running inside our own backend infrastructure. AtomAssist does **not** use hosted video APIs such as Twilio, Agora, Daily, Vonage, LiveKit Cloud, or hosted Jitsi.
+
+The project focuses on the complete product layer around WebRTC, not only the call itself:
+
+* session creation,
+* secure invite flow,
+* customer join experience,
+* SFU-routed media,
+* realtime signaling,
+* chat and file artifacts,
+* reconnect handling,
+* session expiry,
+* recordings,
+* support-case history,
+* admin monitoring,
+* and observability.
+
+---
+
+## Demo Credentials
+
+### Agent
+
+```text
+Email: agent@demo.com
+Password: demo123
+```
+
+### Admin
+
+```text
+Email: admin@demo.com
+Password: demo123
+```
+
+### Customer
+
+Customers join through a generated invite link. No predefined customer account is required.
+
+---
+
+## Quick Demo Flow
+
+Recommended 2–3 minute evaluation flow:
+
+1. Open the agent dashboard.
+2. Create a new support session.
+3. Open the generated customer invite link in another browser.
+4. Join as a customer.
+5. Show both participants inside the live support room.
+6. Send realtime chat messages.
+7. Upload and download a file.
+8. Show tab recording and server recording controls.
+9. End the session.
+10. Open session history and review the case record.
+11. Open admin dashboard.
+12. Open observability dashboard.
+
+---
+
+## Screenshots
+
+> Place screenshots inside `docs/screenshots/` using the names below.
+
+### 1. Agent Dashboard
 
 ![Agent Dashboard](docs/screenshots/01-agent-dashboard.png)
 
-Agents can create support sessions, manage active sessions, and open persisted history.
+Agents can create support sessions, manage active sessions, and inspect previous session history.
 
-### Admin Dashboard
+### 2. Admin Dashboard
 
 ![Admin Dashboard](docs/screenshots/02-admin-dashboard.png)
 
-Admins can monitor all sessions, status counts, participants, events, chat counts, and force-end sessions.
+Admins can monitor all sessions, session status distribution, participants, events, chat counts, and session history.
 
-### Live Video Support Room
+### 3. Live Video Support Room
 
-![Live Call Agent](docs/screenshots/03-live-call-agent.png)
+![Live Video Support Room](docs/screenshots/03-live-call-agent.png)
 
-The live room includes self-hosted SFU video, realtime chat, file sharing, recording controls, participant status, and session lifecycle actions.
+The live room combines SFU video, realtime chat, file sharing, participant presence, recording controls, and session lifecycle actions.
 
-### Customer Experience
+### 4. Customer Call Experience
 
-![Live Call Customer](docs/screenshots/04-live-call-customer.png)
+![Customer Call Experience](docs/screenshots/04-live-call-customer.png)
 
 Customers join directly through a secure browser invite link without installing any app.
 
-### Session History and Support Case Review
+### 5. Session History and Case Review
 
 ![Session History Review](docs/screenshots/05-session-history-review.png)
 
-Every session becomes a reviewable support case with duration, participants, events, chat, files, recordings, and resolution notes.
+Completed or active sessions are reviewable as support cases with duration, participants, timeline, chat, files, recordings, and review notes.
 
-### Observability Dashboard
+### 6. Observability Dashboard
 
 ![Observability Dashboard](docs/screenshots/06-observability.png)
 
-AtomAssist exposes human-friendly operational metrics and a raw Prometheus-compatible `/metrics` endpoint.
+Operational metrics are exposed through a human-friendly dashboard and a raw Prometheus-compatible endpoint.
 
-### Recording Architecture
+### 7. Recording Architecture
 
-![Recording Plan](docs/screenshots/07-recording-plan.png)
+![Recording Architecture](docs/screenshots/07-recording-plan.png)
 
-The app includes a stable browser tab recording MVP and an experimental server-side SFU recording spike using mediasoup PlainTransport and FFmpeg.
-
----
-
-## Core Features
-
-| Area                                   | Implemented |
-| -------------------------------------- | ----------- |
-| Agent login                            | Yes         |
-| Admin login                            | Yes         |
-| Role-aware protected routes            | Yes         |
-| Secure invite links                    | Yes         |
-| Customer browser join flow             | Yes         |
-| Self-hosted SFU video/audio            | Yes         |
-| Socket.IO signaling                    | Yes         |
-| Realtime chat                          | Yes         |
-| File sharing                           | Yes         |
-| Session event timeline                 | Yes         |
-| Customer reconnect window              | Yes         |
-| Agent-controlled session ending        | Yes         |
-| Invite expiry after session end        | Yes         |
-| Session history                        | Yes         |
-| Support case review notes              | Yes         |
-| Call duration tracking                 | Yes         |
-| Browser tab recording MVP              | Yes         |
-| Experimental server-side SFU recording | Yes         |
-| Admin dashboard                        | Yes         |
-| Observability dashboard                | Yes         |
-| Prometheus metrics endpoint            | Yes         |
+Recording support includes a stable tab-recording MVP and an experimental server-side SFU recording path.
 
 ---
 
-## Hackathon Requirement Compliance
+## What Was Built
 
-### Must-Haves
-
-* Browser-based customer support session
-* Agent can create and manage support sessions
-* Customer can join through an invite link
-* Working realtime audio/video
-* No hosted video APIs
-* Self-hosted media infrastructure
-* Working demo or screen recording
-* Code repository
-* Architecture and limitations documented
-
-### Strong Good-to-Haves
-
-* Realtime chat
-* Persistent chat history
-* File sharing
-* Admin dashboard
-* Session review
-* Call duration
-* Reconnect handling
-* Recording artifacts
-* Production observability
-* Prometheus metrics
-* Server-side recording spike
+| Area                 | Capability                                   | Status      |
+| -------------------- | -------------------------------------------- | ----------- |
+| Authentication       | Agent/admin login                            | Implemented |
+| Authorization        | Role-aware frontend and backend access       | Implemented |
+| Session Management   | Agent-created support sessions               | Implemented |
+| Invite Flow          | Customer joins through generated secure link | Implemented |
+| Video Infrastructure | Self-hosted mediasoup SFU                    | Implemented |
+| Realtime Layer       | Socket.IO signaling and presence             | Implemented |
+| Communication        | Realtime chat                                | Implemented |
+| Artifacts            | File upload and download                     | Implemented |
+| Resilience           | 60-second customer reconnect window          | Implemented |
+| Lifecycle            | Agent-controlled session ending              | Implemented |
+| Security             | Invite expiry after session end              | Implemented |
+| History              | Session timeline and persisted records       | Implemented |
+| Review               | Resolution status and review notes           | Implemented |
+| Recording            | Browser tab recording MVP                    | Implemented |
+| Recording Spike      | Experimental server-side SFU recording       | Implemented |
+| Admin                | Global session monitoring dashboard          | Implemented |
+| Observability        | Metrics dashboard and `/metrics` endpoint    | Implemented |
 
 ---
 
-## Media Architecture
+## Requirement Coverage
 
-AtomAssist uses **mediasoup** as a self-hosted Selective Forwarding Unit.
+### Core Requirements
 
-The browsers do not depend on Twilio, Agora, Daily, Vonage, LiveKit Cloud, or any hosted video API.
+| Requirement                           | AtomAssist Implementation                                       |
+| ------------------------------------- | --------------------------------------------------------------- |
+| Browser-based support session         | Customer joins directly through invite link                     |
+| Agent can create session              | Agent dashboard provides session creation                       |
+| Customer can join without app install | Browser-only customer flow                                      |
+| Working realtime video/audio          | mediasoup SFU-routed call room                                  |
+| No hosted video APIs                  | No Twilio, Agora, Daily, Vonage, LiveKit Cloud, or hosted Jitsi |
+| Self-hosted media infrastructure      | mediasoup worker/router runs in backend                         |
+| Session lifecycle                     | Waiting, active, reconnecting, ended                            |
+| Invite expiry                         | Ended sessions reject new joins                                 |
+| Persistent records                    | Events, participants, chat, files, recordings, review notes     |
+| Documentation                         | README, architecture notes, production notes, demo script       |
+
+### Additional Product Features
+
+| Feature             | Description                                                   |
+| ------------------- | ------------------------------------------------------------- |
+| Realtime chat       | Socket.IO-based chat persisted to session history             |
+| File sharing        | Files can be uploaded, downloaded, and reviewed later         |
+| Reconnect handling  | Customer disconnects do not immediately terminate the session |
+| Case review         | Agents/admins can save resolution status and notes            |
+| Call duration       | Session history shows call duration                           |
+| Admin dashboard     | Admins can monitor sessions and inspect history               |
+| Observability       | Human-friendly dashboard plus Prometheus-compatible metrics   |
+| Recording artifacts | Stable tab recording and experimental SFU-side recording path |
+
+---
+
+## Technical Differentiators
+
+### 1. Self-Hosted SFU Instead of Hosted Video SDK
+
+AtomAssist uses mediasoup as the SFU layer. Media is routed through the project’s own backend infrastructure rather than a hosted video API.
 
 ```mermaid
 flowchart LR
-    A[Agent Browser] -->|WebRTC Producer| S[Self-hosted mediasoup SFU]
-    C[Customer Browser] -->|WebRTC Producer| S
+    Agent[Agent Browser] -->|Producer| SFU[Self-hosted mediasoup SFU]
+    Customer[Customer Browser] -->|Producer| SFU
 
-    S -->|Consumer Stream| A
-    S -->|Consumer Stream| C
-
-    A -->|Socket.IO Signaling| B[Node.js Backend]
-    C -->|Socket.IO Signaling| B
-
-    B --> P[(PostgreSQL)]
-    B --> F[File and Recording Storage]
+    SFU -->|Consumer| Agent
+    SFU -->|Consumer| Customer
 ```
 
----
+### 2. Complete Support Session Lifecycle
 
-## System Architecture
-
-```mermaid
-flowchart TB
-    subgraph Frontend
-        R[React + Vite + TypeScript]
-        M[mediasoup-client]
-        SC[Socket.IO Client]
-    end
-
-    subgraph Backend
-        E[Express API]
-        SIO[Socket.IO Server]
-        MS[mediasoup Worker/Router]
-        REC[Recording Services]
-        MET[Prometheus Metrics]
-    end
-
-    subgraph Data
-        DB[(PostgreSQL)]
-        FS[Uploads and Recordings]
-    end
-
-    R --> E
-    SC --> SIO
-    M --> MS
-    E --> DB
-    E --> FS
-    REC --> FS
-    MET --> E
-```
-
----
-
-## Session Lifecycle
-
-AtomAssist treats dropped calls and ended sessions differently.
+The project models a support call as a real session, not just a temporary browser connection.
 
 ```mermaid
 stateDiagram-v2
     [*] --> WAITING
     WAITING --> ACTIVE: Customer joins
     ACTIVE --> RECONNECTING: Customer disconnects
-    RECONNECTING --> ACTIVE: Customer rejoins within 60s
+    RECONNECTING --> ACTIVE: Customer rejoins within 60 seconds
     RECONNECTING --> ENDED: Reconnect timeout
     ACTIVE --> ENDED: Agent ends session
     ENDED --> [*]
 ```
 
-This matters in real support workflows. A short network drop should not immediately destroy the support session. The customer can rejoin within the reconnect window. The invite expires only when the session ends.
+### 3. Persisted Support Case Record
+
+After a call, the session remains reviewable with:
+
+* participants,
+* event timeline,
+* call duration,
+* chat messages,
+* shared files,
+* recordings,
+* resolution status,
+* and review notes.
+
+### 4. Production-Aware Recording Strategy
+
+AtomAssist includes both a reliable MVP recording path and a deeper server-side recording spike.
+
+Stable path:
+
+```text
+Browser tab capture -> WebM artifact -> backend upload -> session history
+```
+
+Experimental SFU-side path:
+
+```text
+mediasoup Producer
+-> server-side Consumer
+-> PlainTransport RTP
+-> FFmpeg
+-> WebM artifact
+-> session history
+```
+
+The experimental server-side path demonstrates the intended production direction while keeping the stable tab recording flow available.
+
+### 5. Observability Built Into the Product
+
+AtomAssist exposes operational metrics through:
+
+```text
+/admin/observability
+/metrics
+```
+
+Tracked metrics include HTTP requests, active sockets, sessions by status, participants by status, chat count, file count, recording count, and Node.js runtime metrics.
 
 ---
 
-## Recording Strategy
+## Architecture
 
-AtomAssist includes two recording paths.
+```mermaid
+flowchart TB
+    subgraph Clients
+        A[Agent Browser]
+        C[Customer Browser]
+        AD[Admin Browser]
+    end
 
-### 1. Stable Browser Tab Recording MVP
+    subgraph Web_App
+        R[React + Vite + TypeScript]
+        MC[mediasoup-client]
+        SOC[Socket.IO Client]
+    end
 
-The agent selects the AtomAssist browser tab/window. The browser records the tab using the MediaRecorder API and uploads the final `.webm` artifact to the backend.
+    subgraph Backend
+        API[Express REST API]
+        WS[Socket.IO Server]
+        SFU[mediasoup Worker/Router]
+        REC[Recording Services]
+        OBS[Metrics Service]
+    end
+
+    subgraph Persistence
+        DB[(PostgreSQL)]
+        FS[Uploads and Recordings]
+    end
+
+    A --> R
+    C --> R
+    AD --> R
+
+    R --> API
+    SOC --> WS
+    MC --> SFU
+
+    API --> DB
+    WS --> DB
+    API --> FS
+    REC --> FS
+    OBS --> API
+```
+
+---
+
+## System Components
+
+### Frontend
+
+The frontend handles:
+
+* agent login,
+* admin login,
+* customer invite join,
+* live call UI,
+* media send/receive through `mediasoup-client`,
+* realtime chat,
+* file upload/download,
+* recording controls,
+* session history,
+* case review,
+* admin dashboard,
+* and observability pages.
+
+### Backend
+
+The backend handles:
+
+* authentication,
+* JWT validation,
+* session creation,
+* invite validation,
+* participant lifecycle,
+* Socket.IO signaling,
+* mediasoup worker/router/transports,
+* chat persistence,
+* file persistence,
+* recording metadata,
+* session review updates,
+* metrics collection,
+* and admin operations.
+
+### Database
+
+PostgreSQL stores:
+
+* sessions,
+* participants,
+* session events,
+* chat messages,
+* file metadata,
+* recording metadata,
+* review notes,
+* and lifecycle timestamps.
+
+---
+
+## Recording Design
+
+### Browser Tab Recording MVP
+
+This is the stable recording mode used for reliable demos.
+
+```text
+Agent clicks Start Tab Recording
+Browser captures selected AtomAssist tab/window
+MediaRecorder creates WebM chunks
+Recording uploads to backend
+Backend marks recording READY
+Recording appears in session history
+```
 
 Lifecycle:
 
@@ -215,62 +376,106 @@ Lifecycle:
 IN_PROGRESS -> PROCESSING -> READY
 ```
 
-This recording is reliable for demos and support-case review.
+### Experimental Server-Side SFU Recording
 
-### 2. Experimental Server-Side SFU Recording Spike
-
-AtomAssist also includes an experimental server-side recording path:
+This spike records selected SFU producer streams server-side.
 
 ```text
-mediasoup Producer
+Active mediasoup Producer
 -> server-side Consumer
--> PlainTransport RTP forwarding
--> FFmpeg
--> WebM artifact
--> Session history
+-> PlainTransport
+-> RTP forwarded to FFmpeg
+-> WebM output
+-> persisted recording artifact
 ```
 
-This proves the production direction for SFU-side recording. In a production version, this would be expanded into a hardened recorder service with audio/video composition, retry handling, object storage, recording workers, and FFmpeg/GStreamer pipelines.
+This is separated from tab recording to keep the core product reliable while demonstrating the production path for SFU-side recording.
+
+---
+
+## Security and Access Control
+
+| Role     | Access Scope                                |
+| -------- | ------------------------------------------- |
+| Agent    | Create and manage assigned support sessions |
+| Customer | Join and access one invited session         |
+| Admin    | Monitor all sessions and force-end sessions |
+
+Implemented controls:
+
+* JWT-based authentication
+* role-aware route protection
+* session-scoped customer tokens
+* invite token validation
+* ended sessions reject joins
+* file downloads require session access
+* recording downloads require session access
+* admin-only monitoring routes
+
+For hackathon speed, demo users are included. A production system should move user identity to database-backed accounts with hashed passwords.
+
+---
+
+## Observability
+
+AtomAssist includes production-oriented observability features.
+
+### Human-Readable Dashboard
+
+```text
+/admin/observability
+```
+
+### Prometheus-Compatible Metrics
+
+```text
+/metrics
+```
+
+Metrics include:
+
+* HTTP request count
+* HTTP request duration
+* active Socket.IO connections
+* sessions grouped by status
+* participants grouped by status
+* total chat messages
+* total uploaded files
+* total recordings
+* Node.js process metrics
 
 ---
 
 ## Tech Stack
 
-### Frontend
-
-* React
-* Vite
-* TypeScript
-* Tailwind CSS
-* Socket.IO Client
-* mediasoup-client
-
-### Backend
-
-* Node.js
-* Express
-* TypeScript
-* Socket.IO
-* mediasoup
-* Prisma
-* PostgreSQL
-* JWT authentication
-* multer uploads
-* FFmpeg recording spike
-* prom-client metrics
-
-### Infrastructure
-
-* pnpm workspaces
-* Docker Compose for PostgreSQL
-* Local filesystem storage for hackathon uploads/recordings
-* Production-ready environment configuration
+| Layer                | Technology                            |
+| -------------------- | ------------------------------------- |
+| Frontend             | React, Vite, TypeScript, Tailwind CSS |
+| Realtime client      | Socket.IO Client                      |
+| WebRTC client        | mediasoup-client                      |
+| Backend              | Node.js, Express, TypeScript          |
+| Realtime server      | Socket.IO                             |
+| SFU                  | mediasoup                             |
+| Database             | PostgreSQL                            |
+| ORM                  | Prisma                                |
+| File uploads         | multer                                |
+| Recording            | MediaRecorder API, FFmpeg spike       |
+| Metrics              | prom-client                           |
+| Package management   | pnpm workspaces                       |
+| Local infrastructure | Docker Compose                        |
 
 ---
 
 ## Local Setup
 
-### 1. Install dependencies
+### Prerequisites
+
+* Node.js 24+
+* pnpm 9+
+* Docker Desktop
+* FFmpeg installed and available in PATH
+
+### 1. Install Dependencies
 
 ```bash
 pnpm install
@@ -282,14 +487,14 @@ pnpm install
 docker compose up -d
 ```
 
-### 3. Run Prisma migration
+### 3. Run Migrations
 
 ```bash
 pnpm --filter @atomassist/server prisma:migrate
 pnpm --filter @atomassist/server prisma:generate
 ```
 
-### 4. Start development servers
+### 4. Start Development Servers
 
 ```bash
 pnpm dev
@@ -321,104 +526,63 @@ http://localhost:4000/metrics
 
 ---
 
-## Demo Credentials
+## Environment Configuration
 
-Agent:
+### Backend
 
-```text
-agent@demo.com
-demo123
-```
-
-Admin:
+Create:
 
 ```text
-admin@demo.com
-demo123
+apps/server/.env
 ```
+
+Example:
+
+```env
+PORT=4000
+FRONTEND_ORIGIN=http://localhost:5173
+DATABASE_URL="postgresql://atomassist:atomassist@localhost:5432/atomassist?schema=public"
+
+JWT_SECRET="replace-with-local-secret"
+INVITE_TOKEN_SECRET="replace-with-local-invite-secret"
+
+MEDIASOUP_LISTEN_IP=0.0.0.0
+MEDIASOUP_ANNOUNCED_IP=127.0.0.1
+MEDIASOUP_MIN_PORT=40000
+MEDIASOUP_MAX_PORT=40100
+```
+
+### Frontend
+
+Create:
+
+```text
+apps/web/.env.local
+```
+
+Example:
+
+```env
+VITE_API_BASE_URL=http://localhost:4000
+```
+
+For testing across devices on the same Wi-Fi, set `MEDIASOUP_ANNOUNCED_IP` to the host machine’s LAN IP.
 
 ---
 
-## Demo Flow
-
-1. Login as agent.
-2. Create a new support session.
-3. Copy the customer invite link.
-4. Open the invite in another browser or incognito window.
-5. Customer joins the support room.
-6. Show local and remote video routed through the self-hosted SFU.
-7. Send realtime chat messages.
-8. Upload and download a file inside the session.
-9. Close the customer tab and show reconnect handling.
-10. Rejoin within the reconnect window.
-11. Start and stop browser tab recording.
-12. Optionally start and stop experimental server-side SFU recording.
-13. End the session.
-14. Open session history.
-15. Save review notes and resolution status.
-16. Open admin dashboard.
-17. Open observability dashboard.
-18. Open recording architecture page.
-
----
-
-## Key Product Screens
+## Important Routes
 
 | Route                         | Purpose                           |
 | ----------------------------- | --------------------------------- |
 | `/agent/login`                | Agent/admin login                 |
-| `/agent/dashboard`            | Agent session management          |
-| `/join/:inviteToken`          | Customer invite page              |
+| `/agent/dashboard`            | Agent session dashboard           |
+| `/join/:inviteToken`          | Customer invite join              |
 | `/call/:sessionId`            | Live support room                 |
 | `/session/:sessionId/history` | Support case review               |
 | `/admin`                      | Admin dashboard                   |
 | `/admin/observability`        | Metrics dashboard                 |
 | `/admin/recording`            | Recording architecture page       |
-| `/metrics`                    | Raw Prometheus-compatible metrics |
-
----
-
-## Security and Access Control
-
-* JWT-based authentication
-* Role-aware protected routes
-* Agent/admin/customer separation
-* Invite token validation
-* Ended sessions reject new joins
-* Customer access scoped to one session
-* File downloads require session access
-* Recording downloads require session access
-* Admin can monitor all sessions
-
----
-
-## Observability
-
-AtomAssist exposes a Prometheus-compatible metrics endpoint and a human-readable dashboard.
-
-Tracked metrics include:
-
-* HTTP request count
-* HTTP request duration
-* Active Socket.IO connections
-* Sessions by status
-* Participants by status
-* Persisted chat messages
-* Uploaded files
-* Recordings
-* Node.js runtime metrics
-
-Raw metrics endpoint:
-
-```text
-/metrics
-```
-
-Admin dashboard:
-
-```text
-/admin/observability
-```
+| `/metrics`                    | Prometheus-compatible raw metrics |
 
 ---
 
@@ -430,6 +594,7 @@ AtomAssist/
     server/
       prisma/
       src/
+        db/
         media/
         middleware/
         metrics/
@@ -441,65 +606,62 @@ AtomAssist/
     web/
       src/
         components/
+        lib/
         pages/
         routes/
-        lib/
   packages/
     shared/
   docs/
     screenshots/
-    DEMO_SCRIPT.md
     ARCHITECTURE.md
+    DEMO_SCRIPT.md
     PRODUCTION_NOTES.md
 ```
 
 ---
 
-## Production Upgrade Path
+## Known Limitations
 
-AtomAssist is built as a hackathon MVP with a production-aware architecture.
+* Demo users are included for hackathon evaluation.
+* Uploads and recordings are stored on local filesystem.
+* Browser tab recording is the stable recording MVP.
+* Server-side SFU recording is experimental.
+* Public deployment requires a VM-style host with open RTC media ports.
+* TURN server is required for robust NAT traversal in production.
+* Object storage, production identity, organization management, audit logs, and background workers are not included in this hackathon build.
+
+---
+
+## Production Roadmap
 
 Recommended production upgrades:
 
-* Replace demo users with database-backed users.
-* Add password hashing with Argon2 or bcrypt.
-* Add refresh tokens or secure cookie sessions.
-* Move uploads and recordings to S3-compatible object storage.
-* Add coturn for reliable NAT traversal.
-* Deploy mediasoup on a VM with opened RTC UDP/TCP ports.
-* Add Redis adapter for Socket.IO horizontal scaling.
-* Add proper SFU-side mixed recording with FFmpeg/GStreamer.
-* Add recording workers and background queues.
-* Add audit logs and organization/team roles.
-* Add Grafana dashboards and alerting.
+1. Database-backed user accounts.
+2. Password hashing with Argon2 or bcrypt.
+3. Refresh tokens or secure cookie sessions.
+4. Organization and team access model.
+5. S3-compatible object storage for files and recordings.
+6. coturn deployment for NAT traversal.
+7. Dedicated mediasoup worker orchestration.
+8. Redis adapter for Socket.IO horizontal scaling.
+9. Hardened server-side recording workers.
+10. FFmpeg/GStreamer audio-video composition.
+11. Background queues for recording processing.
+12. Audit logs for support/session actions.
+13. Grafana dashboards and alerting.
+14. CI pipeline for typecheck, build, migrations, and tests.
 
 ---
 
-## Known Limitations
+## Evaluation Notes
 
-* Demo users are hardcoded for hackathon speed.
-* Local filesystem is used for uploads and recordings.
-* Browser tab recording is the stable recording MVP.
-* Server-side SFU recording is experimental and currently records selected SFU producer streams.
-* Public deployment needs a VM-style host with RTC media ports, not a serverless frontend-only platform.
-* TURN server is required for robust production internet connectivity.
+AtomAssist is intended to be evaluated as a locally runnable self-hosted WebRTC system.
 
----
+A frontend-only/serverless deployment is intentionally not used because mediasoup requires:
 
-## Why This Should Win
+* a long-running backend process,
+* RTC UDP/TCP media ports,
+* server-side media workers,
+* and environment-specific announced IP configuration.
 
-AtomAssist is not a wrapper around a hosted video SDK. It demonstrates real WebRTC infrastructure work with a self-hosted SFU and the product layer needed for actual customer support:
-
-* secure sessions,
-* browser-based customer access,
-* SFU media routing,
-* realtime signaling,
-* reconnect handling,
-* chat,
-* file artifacts,
-* recording artifacts,
-* support case review,
-* admin monitoring,
-* and observability.
-
-It is both a working hackathon demo and a credible foundation for a production-grade video support platform.
+The repository includes production configuration examples and a VM-oriented production path.
